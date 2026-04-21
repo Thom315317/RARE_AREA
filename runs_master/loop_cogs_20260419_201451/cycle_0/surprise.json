@@ -1,0 +1,91 @@
+{
+  "train_mean": 0.03813122088369888,
+  "gen_mean": 0.07790350457396181,
+  "ratio": 2.043037247917378,
+  "by_category": {
+    "prim_to_subj_proper": {
+      "surprise_mean": 0.061575071638450024,
+      "n": 1000
+    },
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": {
+      "surprise_mean": 0.054030371339060364,
+      "n": 1000
+    },
+    "do_dative_to_pp_dative": {
+      "surprise_mean": 0.06917350010201335,
+      "n": 1000
+    },
+    "obj_to_subj_common": {
+      "surprise_mean": 0.04788236295152456,
+      "n": 1000
+    },
+    "only_seen_as_transitive_subj_as_unacc_subj": {
+      "surprise_mean": 0.05409872684255242,
+      "n": 1000
+    },
+    "obj_to_subj_proper": {
+      "surprise_mean": 0.060469327047467235,
+      "n": 1000
+    },
+    "pp_recursion": {
+      "surprise_mean": 0.2683679366968572,
+      "n": 1000
+    },
+    "cp_recursion": {
+      "surprise_mean": 0.29604713479429484,
+      "n": 1000
+    },
+    "prim_to_obj_proper": {
+      "surprise_mean": 0.07084771370142698,
+      "n": 1000
+    },
+    "passive_to_active": {
+      "surprise_mean": 0.05162223718315363,
+      "n": 1000
+    },
+    "prim_to_subj_common": {
+      "surprise_mean": 0.05349000448361039,
+      "n": 1000
+    },
+    "pp_dative_to_do_dative": {
+      "surprise_mean": 0.062134053956717256,
+      "n": 1000
+    },
+    "obj_pp_to_subj_pp": {
+      "surprise_mean": 0.12382437385618687,
+      "n": 1000
+    },
+    "obj_omitted_transitive_to_transitive": {
+      "surprise_mean": 0.04800898363254964,
+      "n": 1000
+    },
+    "only_seen_as_unacc_subj_as_unerg_subj": {
+      "surprise_mean": 0.04906510518118739,
+      "n": 1000
+    },
+    "prim_to_inf_arg": {
+      "surprise_mean": 0.025727109693922102,
+      "n": 1000
+    },
+    "prim_to_obj_common": {
+      "surprise_mean": 0.05304492672346532,
+      "n": 1000
+    },
+    "active_to_passive": {
+      "surprise_mean": 0.020608757480978967,
+      "n": 1000
+    },
+    "unacc_to_transitive": {
+      "surprise_mean": 0.045918011866509914,
+      "n": 1000
+    },
+    "subj_to_obj_proper": {
+      "surprise_mean": 0.07182271064817905,
+      "n": 1000
+    },
+    "subj_to_obj_common": {
+      "surprise_mean": 0.04821517623309046,
+      "n": 1000
+    }
+  }
+}

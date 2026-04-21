@@ -1,0 +1,149 @@
+{
+  "checkpoint": "runs_master/B0_s42_20260418_202315/checkpoint.pt",
+  "dataset": "slog",
+  "jepa_epochs": 10,
+  "train_surprise_mean": 0.030471488967858604,
+  "train_entropy_mean": 0.7398542296739048,
+  "gen_surprise_mean": 0.09305208321167704,
+  "gen_entropy_mean": 0.9129224781709558,
+  "by_category": {
+    "CP_3": {
+      "surprise_mean": 0.06866794305853546,
+      "surprise_std": 0.01631878199655541,
+      "entropy_mean": 0.7695126953125,
+      "entropy_std": 0.05155275323473265,
+      "n": 1000
+    },
+    "CP_5-12": {
+      "surprise_mean": 0.19526346009224654,
+      "surprise_std": 0.05631031201649573,
+      "entropy_mean": 1.26187744140625,
+      "entropy_std": 0.24490445423380516,
+      "n": 1000
+    },
+    "PP_3": {
+      "surprise_mean": 0.04585007601417601,
+      "surprise_std": 0.009976522906115382,
+      "entropy_mean": 0.749162109375,
+      "entropy_std": 0.048977825558030055,
+      "n": 1000
+    },
+    "PP_5-12": {
+      "surprise_mean": 0.15753248897194863,
+      "surprise_std": 0.056433517269312894,
+      "entropy_mean": 1.2299677734375,
+      "entropy_std": 0.2851509655288786,
+      "n": 1000
+    },
+    "PP_modif_iobj": {
+      "surprise_mean": 0.047373372780159115,
+      "surprise_std": 0.011223586945014774,
+      "entropy_mean": 0.7616044921875,
+      "entropy_std": 0.03562402839004941,
+      "n": 1000
+    },
+    "PP_modif_subj": {
+      "surprise_mean": 0.06990981129556895,
+      "surprise_std": 0.015750609738920965,
+      "entropy_mean": 0.892912109375,
+      "entropy_std": 0.05477111559021622,
+      "n": 1000
+    },
+    "Q_dobj_ditransV": {
+      "surprise_mean": 0.05102468964084983,
+      "surprise_std": 0.012789127527370369,
+      "entropy_mean": 0.95654296875,
+      "entropy_std": 0.10629717284540326,
+      "n": 1000
+    },
+    "Q_iobj_ditransV": {
+      "surprise_mean": 0.0926325711980462,
+      "surprise_std": 0.01603909693590418,
+      "entropy_mean": 0.88617822265625,
+      "entropy_std": 0.059678899237216816,
+      "n": 1000
+    },
+    "Q_long_mv": {
+      "surprise_mean": 0.05949329895526171,
+      "surprise_std": 0.013419062629815234,
+      "entropy_mean": 0.86518212890625,
+      "entropy_std": 0.047721531792518715,
+      "n": 1000
+    },
+    "Q_modified_NPs": {
+      "surprise_mean": 0.07127607112750411,
+      "surprise_std": 0.02071968806490882,
+      "entropy_mean": 0.8917958984375,
+      "entropy_std": 0.14254997882434764,
+      "n": 1000
+    },
+    "Q_subj_active": {
+      "surprise_mean": 0.05847012693434954,
+      "surprise_std": 0.013785112039128553,
+      "entropy_mean": 0.74122900390625,
+      "entropy_std": 0.04132445589446985,
+      "n": 1000
+    },
+    "Q_subj_passive": {
+      "surprise_mean": 0.08948031096346676,
+      "surprise_std": 0.029571404455226973,
+      "entropy_mean": 0.81123095703125,
+      "entropy_std": 0.07076363889535461,
+      "n": 1000
+    },
+    "RC_iobj_extracted": {
+      "surprise_mean": 0.07025977041572333,
+      "surprise_std": 0.009554943037385698,
+      "entropy_mean": 0.74540673828125,
+      "entropy_std": 0.012003690698428117,
+      "n": 1000
+    },
+    "RC_modif_iobj": {
+      "surprise_mean": 0.05923571157641709,
+      "surprise_std": 0.015211598824676627,
+      "entropy_mean": 0.770439453125,
+      "entropy_std": 0.03678435742419378,
+      "n": 1000
+    },
+    "RC_modif_subj": {
+      "surprise_mean": 0.09075544405728579,
+      "surprise_std": 0.01638813586338063,
+      "entropy_mean": 0.86523876953125,
+      "entropy_std": 0.05127346738750209,
+      "n": 1000
+    },
+    "center_embed_3": {
+      "surprise_mean": 0.07543456489592791,
+      "surprise_std": 0.00684040151948494,
+      "entropy_mean": 0.91309375,
+      "entropy_std": 0.0411411066023487,
+      "n": 1000
+    },
+    "center_embed_5-12": {
+      "surprise_mean": 0.27922570262104274,
+      "surprise_std": 0.06235918250851441,
+      "entropy_mean": 1.4083076171875,
+      "entropy_std": 0.19582300969474425,
+      "n": 1000
+    }
+  },
+  "top500_categories": {
+    "center_embed_5-12": 466,
+    "CP_5-12": 34,
+    "Q_long_mv": 0,
+    "RC_modif_subj": 0,
+    "Q_subj_active": 0,
+    "PP_3": 0,
+    "CP_3": 0,
+    "Q_iobj_ditransV": 0,
+    "Q_dobj_ditransV": 0,
+    "PP_modif_subj": 0,
+    "RC_iobj_extracted": 0,
+    "PP_modif_iobj": 0,
+    "Q_modified_NPs": 0,
+    "center_embed_3": 0,
+    "PP_5-12": 0,
+    "Q_subj_passive": 0,
+    "RC_modif_iobj": 0
+  }
+}

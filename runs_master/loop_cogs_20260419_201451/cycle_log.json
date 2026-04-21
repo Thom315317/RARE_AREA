@@ -1,0 +1,73 @@
+[
+  {
+    "cycle": 0,
+    "gen_greedy": 0.05714285714285715,
+    "by_cat": {
+      "active_to_passive": 0.0,
+      "cp_recursion": 0.0,
+      "do_dative_to_pp_dative": 0.0,
+      "obj_omitted_transitive_to_transitive": 0.0,
+      "obj_pp_to_subj_pp": 0.0,
+      "obj_to_subj_common": 0.0,
+      "obj_to_subj_proper": 0.0,
+      "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+      "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+      "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+      "passive_to_active": 0.0,
+      "pp_dative_to_do_dative": 0.0,
+      "pp_recursion": 1.2,
+      "prim_to_inf_arg": 0.0,
+      "prim_to_obj_common": 0.0,
+      "prim_to_obj_proper": 0.0,
+      "prim_to_subj_common": 0.0,
+      "prim_to_subj_proper": 0.0,
+      "subj_to_obj_common": 0.0,
+      "subj_to_obj_proper": 0.0,
+      "unacc_to_transitive": 0.0
+    },
+    "surprise_ratio": 2.043037247917378,
+    "surprise_train": 0.03813122088369888,
+    "surprise_gen": 0.07790350457396181,
+    "n_train": 24155,
+    "generators": [
+      "baseline"
+    ],
+    "time_s": 60.108593702316284
+  },
+  {
+    "cycle": 1,
+    "gen_greedy": 16.67142857142857,
+    "by_cat": {
+      "active_to_passive": 0.0,
+      "cp_recursion": 0.0,
+      "do_dative_to_pp_dative": 0.0,
+      "obj_omitted_transitive_to_transitive": 0.0,
+      "obj_pp_to_subj_pp": 0.0,
+      "obj_to_subj_common": 0.0,
+      "obj_to_subj_proper": 96.0,
+      "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+      "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+      "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+      "passive_to_active": 0.0,
+      "pp_dative_to_do_dative": 0.0,
+      "pp_recursion": 0.8,
+      "prim_to_inf_arg": 0.0,
+      "prim_to_obj_common": 0.0,
+      "prim_to_obj_proper": 78.4,
+      "prim_to_subj_common": 0.0,
+      "prim_to_subj_proper": 96.1,
+      "subj_to_obj_common": 0.0,
+      "subj_to_obj_proper": 78.8,
+      "unacc_to_transitive": 0.0
+    },
+    "surprise_ratio": 2.080489439001189,
+    "surprise_train": 0.0338418537303975,
+    "surprise_gen": 0.070407619282315,
+    "n_train": 26079,
+    "generators": [
+      "proper_names",
+      "passive"
+    ],
+    "time_s": 3049.0285987854004
+  }
+]

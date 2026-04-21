@@ -1,0 +1,2402 @@
+[
+ {
+  "epoch": 0,
+  "train_loss": 4.264943327973871,
+  "dev": {
+   "exact": 0.0,
+   "tok_acc": 74.92488954344626,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 0.0
+   }
+  },
+  "gen": {
+   "exact": 0.0,
+   "tok_acc": 67.09371401105786,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 0.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 0.0,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 0.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 0.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 1,
+  "train_loss": 1.724665850985284,
+  "dev": {
+   "exact": 0.06666666666666667,
+   "tok_acc": 87.48453608247424,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 0.07
+   }
+  },
+  "gen": {
+   "exact": 0.0,
+   "tok_acc": 77.8406230501205,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 0.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 0.0,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 0.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 0.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 2,
+  "train_loss": 1.439554001478588,
+  "dev": {
+   "exact": 3.4000000000000004,
+   "tok_acc": 92.4661266568483,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 3.4
+   }
+  },
+  "gen": {
+   "exact": 0.0,
+   "tok_acc": 81.37177445373976,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 0.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 0.0,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 0.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 0.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 3,
+  "train_loss": 1.2762102452563304,
+  "dev": {
+   "exact": 17.566666666666666,
+   "tok_acc": 95.72312223858616,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 17.57
+   }
+  },
+  "gen": {
+   "exact": 0.18571428571428572,
+   "tok_acc": 83.77501817131527,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 0.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 0.1,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 3.8,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 0.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 4,
+  "train_loss": 1.1836223158181882,
+  "dev": {
+   "exact": 49.733333333333334,
+   "tok_acc": 97.77982326951398,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 49.73
+   }
+  },
+  "gen": {
+   "exact": 4.833333333333333,
+   "tok_acc": 85.4833790341606,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 38.7,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 16.5,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 32.8,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 13.5,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 5,
+  "train_loss": 1.116846550913418,
+  "dev": {
+   "exact": 74.36666666666667,
+   "tok_acc": 98.79307805596466,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 74.37
+   }
+  },
+  "gen": {
+   "exact": 10.9,
+   "tok_acc": 86.38646951738897,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 67.5,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 47.1,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 64.8,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 49.5,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 6,
+  "train_loss": 1.074115332435159,
+  "dev": {
+   "exact": 84.33333333333334,
+   "tok_acc": 99.18262150220913,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 84.33
+   }
+  },
+  "gen": {
+   "exact": 12.423809523809524,
+   "tok_acc": 86.79531492414348,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 78.4,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 52.1,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 76.6,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 53.8,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 7,
+  "train_loss": 1.0549826005510254,
+  "dev": {
+   "exact": 87.3,
+   "tok_acc": 99.35861561119293,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 87.3
+   }
+  },
+  "gen": {
+   "exact": 12.866666666666667,
+   "tok_acc": 87.21702172694008,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 83.2,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 51.8,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 81.8,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 53.4,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 8,
+  "train_loss": 1.0444153795639675,
+  "dev": {
+   "exact": 89.56666666666668,
+   "tok_acc": 99.48011782032401,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 89.57
+   }
+  },
+  "gen": {
+   "exact": 13.304761904761905,
+   "tok_acc": 87.40590051452934,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 86.3,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 54.0,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 84.6,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 54.5,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 9,
+  "train_loss": 1.0377881950607486,
+  "dev": {
+   "exact": 90.93333333333334,
+   "tok_acc": 99.53829160530191,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 90.93
+   }
+  },
+  "gen": {
+   "exact": 13.580952380952379,
+   "tok_acc": 87.58787089510172,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 87.2,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 55.2,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 87.1,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 55.7,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 10,
+  "train_loss": 1.0329939153264551,
+  "dev": {
+   "exact": 90.96666666666667,
+   "tok_acc": 99.54712812960236,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 90.97
+   }
+  },
+  "gen": {
+   "exact": 14.019047619047619,
+   "tok_acc": 88.20874560232123,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 88.4,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 58.8,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 86.3,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 60.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 11,
+  "train_loss": 1.0291706034365822,
+  "dev": {
+   "exact": 92.2,
+   "tok_acc": 99.61266568483063,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 92.2
+   }
+  },
+  "gen": {
+   "exact": 14.614285714285714,
+   "tok_acc": 88.12158208400182,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 89.8,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 63.5,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 89.2,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 64.4,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 12,
+  "train_loss": 1.026676225311616,
+  "dev": {
+   "exact": 92.76666666666667,
+   "tok_acc": 99.66347569955816,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 92.77
+   }
+  },
+  "gen": {
+   "exact": 14.423809523809524,
+   "tok_acc": 88.3248656351582,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 90.4,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 62.9,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 89.8,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 59.8,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 13,
+  "train_loss": 1.0239794412079979,
+  "dev": {
+   "exact": 93.36666666666666,
+   "tok_acc": 99.68851251840942,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 93.37
+   }
+  },
+  "gen": {
+   "exact": 15.361904761904762,
+   "tok_acc": 88.7036521220201,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 91.1,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.1,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 69.5,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 91.4,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 70.5,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 14,
+  "train_loss": 1.02187606809186,
+  "dev": {
+   "exact": 93.8,
+   "tok_acc": 99.71060382916053,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 93.8
+   }
+  },
+  "gen": {
+   "exact": 15.071428571428571,
+   "tok_acc": 88.46215185119584,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 91.3,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 68.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 91.2,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 65.6,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 15,
+  "train_loss": 1.0202164883707083,
+  "dev": {
+   "exact": 94.23333333333333,
+   "tok_acc": 99.74079528718704,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 94.23
+   }
+  },
+  "gen": {
+   "exact": 14.93809523809524,
+   "tok_acc": 88.74142787953797,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 91.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.2,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 65.9,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 92.2,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 63.5,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 16,
+  "train_loss": 1.0187303774497087,
+  "dev": {
+   "exact": 94.16666666666667,
+   "tok_acc": 99.73122238586156,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 94.17
+   }
+  },
+  "gen": {
+   "exact": 14.942857142857143,
+   "tok_acc": 88.83667570394095,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 92.1,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 64.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 91.4,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 65.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 17,
+  "train_loss": 1.0173000120649152,
+  "dev": {
+   "exact": 94.73333333333333,
+   "tok_acc": 99.75478645066273,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 94.73
+   }
+  },
+  "gen": {
+   "exact": 15.371428571428572,
+   "tok_acc": 89.05061584038934,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 92.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.3,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 69.6,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 92.8,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 67.2,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 18,
+  "train_loss": 1.0166941948381125,
+  "dev": {
+   "exact": 94.33333333333334,
+   "tok_acc": 99.75699558173785,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 94.33
+   }
+  },
+  "gen": {
+   "exact": 14.642857142857144,
+   "tok_acc": 88.8955441509678,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 90.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.2,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 62.3,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 91.1,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 63.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 19,
+  "train_loss": 1.0153598522438723,
+  "dev": {
+   "exact": 95.39999999999999,
+   "tok_acc": 99.79234167893962,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 95.4
+   }
+  },
+  "gen": {
+   "exact": 15.18095238095238,
+   "tok_acc": 89.36347848582416,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 93.2,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 66.7,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 92.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 66.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 20,
+  "train_loss": 1.014632997559566,
+  "dev": {
+   "exact": 95.46666666666667,
+   "tok_acc": 99.7879234167894,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 95.47
+   }
+  },
+  "gen": {
+   "exact": 14.533333333333335,
+   "tok_acc": 89.38398322579981,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 92.7,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.1,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 59.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 92.8,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 60.2,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 21,
+  "train_loss": 1.0137291109445048,
+  "dev": {
+   "exact": 95.13333333333334,
+   "tok_acc": 99.77982326951398,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 95.13
+   }
+  },
+  "gen": {
+   "exact": 15.361904761904762,
+   "tok_acc": 89.48195031679455,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 93.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 67.5,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 92.5,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 69.6,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 22,
+  "train_loss": 1.0128456818706848,
+  "dev": {
+   "exact": 95.83333333333334,
+   "tok_acc": 99.81222385861561,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 95.83
+   }
+  },
+  "gen": {
+   "exact": 15.623809523809523,
+   "tok_acc": 89.75703720471154,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 94.3,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.3,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 70.3,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 93.9,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 69.3,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 23,
+  "train_loss": 1.012309193611145,
+  "dev": {
+   "exact": 95.6,
+   "tok_acc": 99.80486008836525,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 95.6
+   }
+  },
+  "gen": {
+   "exact": 15.761904761904763,
+   "tok_acc": 89.70882534297668,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 94.5,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.1,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 70.8,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 93.6,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 72.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 24,
+  "train_loss": 1.0114979834533204,
+  "dev": {
+   "exact": 96.03333333333333,
+   "tok_acc": 99.82253313696613,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.03
+   }
+  },
+  "gen": {
+   "exact": 15.495238095238095,
+   "tok_acc": 89.95363282992605,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 94.5,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.2,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 67.6,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 94.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 69.1,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 25,
+  "train_loss": 1.0109522626096128,
+  "dev": {
+   "exact": 95.43333333333334,
+   "tok_acc": 99.80559646539028,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 95.43
+   }
+  },
+  "gen": {
+   "exact": 16.014285714285712,
+   "tok_acc": 89.8407465195225,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 94.4,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 75.0,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 93.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 73.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 26,
+  "train_loss": 1.0104354809896618,
+  "dev": {
+   "exact": 96.26666666666667,
+   "tok_acc": 99.83357879234168,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.27
+   }
+  },
+  "gen": {
+   "exact": 15.585714285714285,
+   "tok_acc": 89.95870389465121,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 94.8,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.3,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 67.8,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 93.6,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 70.8,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 27,
+  "train_loss": 1.0098939853556015,
+  "dev": {
+   "exact": 96.46666666666667,
+   "tok_acc": 99.84904270986745,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.47
+   }
+  },
+  "gen": {
+   "exact": 15.1,
+   "tok_acc": 90.17367294278296,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.2,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.1,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 63.2,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 94.5,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 64.1,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 28,
+  "train_loss": 1.009004560171389,
+  "dev": {
+   "exact": 96.2,
+   "tok_acc": 99.84241531664212,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.2
+   }
+  },
+  "gen": {
+   "exact": 15.357142857142858,
+   "tok_acc": 90.0920949450304,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 94.5,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.1,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 66.2,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 94.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 67.7,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 29,
+  "train_loss": 1.008452888212952,
+  "dev": {
+   "exact": 96.16666666666667,
+   "tok_acc": 99.84683357879234,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.17
+   }
+  },
+  "gen": {
+   "exact": 16.157142857142855,
+   "tok_acc": 90.24114015173508,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.6,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 75.1,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 94.2,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 74.4,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 30,
+  "train_loss": 1.0083578588331448,
+  "dev": {
+   "exact": 96.43333333333334,
+   "tok_acc": 99.84609720176731,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.43
+   }
+  },
+  "gen": {
+   "exact": 15.680952380952382,
+   "tok_acc": 90.16492719347436,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.1,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 70.5,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 94.7,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 69.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 31,
+  "train_loss": 1.0078971635769396,
+  "dev": {
+   "exact": 96.63333333333334,
+   "tok_acc": 99.86597938144331,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.63
+   }
+  },
+  "gen": {
+   "exact": 15.995238095238095,
+   "tok_acc": 90.36005294485547,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 94.8,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.1,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 73.5,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.5,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 72.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 32,
+  "train_loss": 1.0077417263505506,
+  "dev": {
+   "exact": 96.33333333333334,
+   "tok_acc": 99.84977908689248,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.33
+   }
+  },
+  "gen": {
+   "exact": 15.89047619047619,
+   "tok_acc": 90.27560869312782,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 71.6,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 94.4,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 72.7,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 33,
+  "train_loss": 1.0070185553209454,
+  "dev": {
+   "exact": 96.86666666666667,
+   "tok_acc": 99.87481590574374,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.87
+   }
+  },
+  "gen": {
+   "exact": 16.32857142857143,
+   "tok_acc": 90.33932772380483,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.5,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.2,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 76.3,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.6,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 75.3,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 34,
+  "train_loss": 1.0069451763057242,
+  "dev": {
+   "exact": 96.83333333333334,
+   "tok_acc": 99.87039764359352,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.83
+   }
+  },
+  "gen": {
+   "exact": 16.523809523809526,
+   "tok_acc": 90.51821136932712,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.2,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.7,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.0,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.2,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 77.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 35,
+  "train_loss": 1.0064034930923407,
+  "dev": {
+   "exact": 97.03333333333333,
+   "tok_acc": 99.87187039764359,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.03
+   }
+  },
+  "gen": {
+   "exact": 16.34285714285714,
+   "tok_acc": 90.38614320539796,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.5,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.9,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 76.0,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.1,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 75.7,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 36,
+  "train_loss": 1.0061992774991428,
+  "dev": {
+   "exact": 96.76666666666667,
+   "tok_acc": 99.86892488954344,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 96.77
+   }
+  },
+  "gen": {
+   "exact": 16.238095238095237,
+   "tok_acc": 90.3500578027885,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.3,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.1,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 76.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.3,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 73.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 37,
+  "train_loss": 1.0057769520025628,
+  "dev": {
+   "exact": 97.06666666666666,
+   "tok_acc": 99.8858615611193,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.07
+   }
+  },
+  "gen": {
+   "exact": 16.5,
+   "tok_acc": 90.64256269563103,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.5,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 1.0,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 77.2,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.8,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 77.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 38,
+  "train_loss": 1.0054892555755728,
+  "dev": {
+   "exact": 97.03333333333333,
+   "tok_acc": 99.87849779086892,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.03
+   }
+  },
+  "gen": {
+   "exact": 16.419047619047618,
+   "tok_acc": 90.50116083285991,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.7,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.7,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 76.8,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.6,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 76.0,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 39,
+  "train_loss": 1.0054202981147111,
+  "dev": {
+   "exact": 97.16666666666667,
+   "tok_acc": 99.88438880706923,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.17
+   }
+  },
+  "gen": {
+   "exact": 16.53333333333333,
+   "tok_acc": 90.59729058156293,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.2,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 77.8,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.5,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 77.8,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 40,
+  "train_loss": 1.0050705851000898,
+  "dev": {
+   "exact": 97.33333333333334,
+   "tok_acc": 99.8939617083947,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.33
+   }
+  },
+  "gen": {
+   "exact": 16.580952380952382,
+   "tok_acc": 90.69209744381591,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 1.6,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 77.3,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.6,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 77.7,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 41,
+  "train_loss": 1.0046368159499823,
+  "dev": {
+   "exact": 97.26666666666667,
+   "tok_acc": 99.89101620029454,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.27
+   }
+  },
+  "gen": {
+   "exact": 16.495238095238097,
+   "tok_acc": 90.67203366599028,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.8,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 76.6,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.7,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 77.4,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 42,
+  "train_loss": 1.0044535186653043,
+  "dev": {
+   "exact": 97.2,
+   "tok_acc": 99.89248895434463,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.2
+   }
+  },
+  "gen": {
+   "exact": 16.761904761904763,
+   "tok_acc": 90.64476750638109,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.4,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 79.9,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.5,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 80.3,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 43,
+  "train_loss": 1.004468358176596,
+  "dev": {
+   "exact": 97.39999999999999,
+   "tok_acc": 99.89469808541973,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.4
+   }
+  },
+  "gen": {
+   "exact": 16.63809523809524,
+   "tok_acc": 90.6819553143656,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.6,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.8,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.6,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 78.5,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 44,
+  "train_loss": 1.0042549250464814,
+  "dev": {
+   "exact": 97.3,
+   "tok_acc": 99.89322533136966,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.3
+   }
+  },
+  "gen": {
+   "exact": 16.433333333333334,
+   "tok_acc": 90.59067614931273,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.1,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.3,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 75.7,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.9,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 77.1,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 45,
+  "train_loss": 1.0040599269902004,
+  "dev": {
+   "exact": 97.39999999999999,
+   "tok_acc": 99.90132547864506,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.4
+   }
+  },
+  "gen": {
+   "exact": 16.690476190476193,
+   "tok_acc": 90.69959380036615,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.7,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.3,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.7,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 79.8,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 46,
+  "train_loss": 1.0039059407278603,
+  "dev": {
+   "exact": 97.36666666666667,
+   "tok_acc": 99.89543446244478,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.37
+   }
+  },
+  "gen": {
+   "exact": 16.723809523809525,
+   "tok_acc": 90.76265138781812,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.6,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 79.0,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.8,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 79.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 47,
+  "train_loss": 1.0037921617428462,
+  "dev": {
+   "exact": 97.5,
+   "tok_acc": 99.90500736377025,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.5
+   }
+  },
+  "gen": {
+   "exact": 16.657142857142855,
+   "tok_acc": 90.74839361163434,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.1,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 1.8,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 77.6,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.9,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 78.4,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 48,
+  "train_loss": 1.0037254099460209,
+  "dev": {
+   "exact": 97.46666666666667,
+   "tok_acc": 99.90279823269515,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.47
+   }
+  },
+  "gen": {
+   "exact": 16.53333333333333,
+   "tok_acc": 90.71929010973344,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 1.1,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 77.0,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.9,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 77.3,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 49,
+  "train_loss": 1.003529014248474,
+  "dev": {
+   "exact": 97.56666666666666,
+   "tok_acc": 99.90427098674522,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.57
+   }
+  },
+  "gen": {
+   "exact": 16.585714285714285,
+   "tok_acc": 90.76676703455159,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.1,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 1.2,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 77.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 77.6,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 50,
+  "train_loss": 1.0034489688627861,
+  "dev": {
+   "exact": 97.39999999999999,
+   "tok_acc": 99.89764359351987,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.4
+   }
+  },
+  "gen": {
+   "exact": 16.8,
+   "tok_acc": 90.769559794835,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.1,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.4,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 79.9,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 80.4,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 51,
+  "train_loss": 1.003399246901858,
+  "dev": {
+   "exact": 97.46666666666667,
+   "tok_acc": 99.90353460972018,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.47
+   }
+  },
+  "gen": {
+   "exact": 16.690476190476193,
+   "tok_acc": 90.78528744485217,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 95.9,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.3,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.8,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 79.5,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 52,
+  "train_loss": 1.0033355762853342,
+  "dev": {
+   "exact": 97.56666666666666,
+   "tok_acc": 99.90648011782032,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.57
+   }
+  },
+  "gen": {
+   "exact": 16.57142857142857,
+   "tok_acc": 90.76162247613476,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.5,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 77.7,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 77.8,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 53,
+  "train_loss": 1.0031313343959696,
+  "dev": {
+   "exact": 97.6,
+   "tok_acc": 99.90868924889543,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.6
+   }
+  },
+  "gen": {
+   "exact": 16.614285714285714,
+   "tok_acc": 90.74846710532601,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.2,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 1.2,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 77.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 78.1,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 54,
+  "train_loss": 1.0032370987476087,
+  "dev": {
+   "exact": 97.56666666666666,
+   "tok_acc": 99.90500736377025,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.57
+   }
+  },
+  "gen": {
+   "exact": 16.695238095238096,
+   "tok_acc": 90.74251411630084,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.8,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.8,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.1,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 78.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 55,
+  "train_loss": 1.0031311665387714,
+  "dev": {
+   "exact": 97.6,
+   "tok_acc": 99.90648011782032,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.6
+   }
+  },
+  "gen": {
+   "exact": 16.685714285714287,
+   "tok_acc": 90.7650766796432,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 1.2,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 95.9,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 78.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 56,
+  "train_loss": 1.0030268587025941,
+  "dev": {
+   "exact": 97.56666666666666,
+   "tok_acc": 99.90574374079529,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.57
+   }
+  },
+  "gen": {
+   "exact": 16.666666666666664,
+   "tok_acc": 90.75581647449292,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.6,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.1,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 78.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 57,
+  "train_loss": 1.00311330793535,
+  "dev": {
+   "exact": 97.56666666666666,
+   "tok_acc": 99.90574374079529,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.57
+   }
+  },
+  "gen": {
+   "exact": 16.657142857142855,
+   "tok_acc": 90.76419475534317,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.8,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.1,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.0,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 78.9,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 58,
+  "train_loss": 1.00314046194156,
+  "dev": {
+   "exact": 97.53333333333333,
+   "tok_acc": 99.90500736377025,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.53
+   }
+  },
+  "gen": {
+   "exact": 16.67142857142857,
+   "tok_acc": 90.76919232637667,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.8,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.1,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 78.8,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ },
+ {
+  "epoch": 59,
+  "train_loss": 1.0030347785236788,
+  "dev": {
+   "exact": 97.56666666666666,
+   "tok_acc": 99.90574374079529,
+   "n": 3000,
+   "by_cat": {
+    "in_distribution": 97.57
+   }
+  },
+  "gen": {
+   "exact": 16.666666666666664,
+   "tok_acc": 90.77014774436836,
+   "n": 21000,
+   "by_cat": {
+    "active_to_passive": 0.0,
+    "cp_recursion": 0.0,
+    "do_dative_to_pp_dative": 0.0,
+    "obj_omitted_transitive_to_transitive": 0.0,
+    "obj_pp_to_subj_pp": 0.0,
+    "obj_to_subj_common": 0.0,
+    "obj_to_subj_proper": 96.0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0.0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0.0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0.0,
+    "passive_to_active": 0.0,
+    "pp_dative_to_do_dative": 0.0,
+    "pp_recursion": 0.7,
+    "prim_to_inf_arg": 0.0,
+    "prim_to_obj_common": 0.0,
+    "prim_to_obj_proper": 78.4,
+    "prim_to_subj_common": 0.0,
+    "prim_to_subj_proper": 96.1,
+    "subj_to_obj_common": 0.0,
+    "subj_to_obj_proper": 78.8,
+    "unacc_to_transitive": 0.0
+   }
+  }
+ }
+]

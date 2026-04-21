@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# PyTorch
+*.pt
+*.pth
+*.ckpt
+
+# Data (download separately)
+data/cogs/
+data/scan/
+data/slog/
+data/scan_compositional/
+
+# Runs — don't push heavy artifacts or incomplete sweeps
+runs/
+runs_master/*/checkpoint.pt
+runs_master/*/model_*.pt
+runs_pub/
+sweep/
+
+# Large archives
+*.zip
+
+# Claude Code prompts (internal workflow, not published)
+BRIEFING_FOR_CLAUDE.md
+PROMPT_*.md
+MASTER_PROMPT_*.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
+
+# Env
+.env
+.venv/
+venv/
+
+# Other
+plots/
+*.log

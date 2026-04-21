@@ -1,0 +1,95 @@
+{
+  "cluster_0": {
+    "n": 426,
+    "categories": {
+      "subj_to_obj_proper": 23,
+      "prim_to_obj_proper": 23,
+      "do_dative_to_pp_dative": 23,
+      "pp_dative_to_do_dative": 23,
+      "prim_to_subj_proper": 23,
+      "obj_to_subj_proper": 23,
+      "only_seen_as_transitive_subj_as_unacc_subj": 23,
+      "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 23,
+      "prim_to_subj_common": 23,
+      "prim_to_obj_common": 23,
+      "passive_to_active": 23,
+      "only_seen_as_unacc_subj_as_unerg_subj": 23,
+      "subj_to_obj_common": 23,
+      "obj_omitted_transitive_to_transitive": 23,
+      "obj_to_subj_common": 23,
+      "unacc_to_transitive": 23,
+      "prim_to_inf_arg": 23,
+      "obj_pp_to_subj_pp": 21,
+      "active_to_passive": 7,
+      "cp_recursion": 4,
+      "pp_recursion": 3
+    },
+    "feature_means": {
+      "input_len": 7.755868544600939,
+      "lf_len": 51.936619718309856,
+      "n_nmod": 0.37089201877934275,
+      "n_ccomp": 0.284037558685446,
+      "has_passive": 0.0,
+      "has_pp_dative": 0.07746478873239436,
+      "n_and": 2.9741784037558685,
+      "lf_input_ratio": 6.572765426403736,
+      "nmod_on_subj": 0.04929577464788732
+    },
+    "purity": 5.39906103286385
+  },
+  "cluster_1": {
+    "n": 19,
+    "categories": {
+      "cp_recursion": 19
+    },
+    "feature_means": {
+      "input_len": 38.21052631578947,
+      "lf_len": 295.5263157894737,
+      "n_nmod": 0.10526315789473684,
+      "n_ccomp": 9.473684210526315,
+      "has_passive": 0.10526315789473684,
+      "has_pp_dative": 0.05263157894736842,
+      "n_and": 22.263157894736842,
+      "lf_input_ratio": 7.711213964856746,
+      "nmod_on_subj": 0.0
+    },
+    "purity": 100.0
+  },
+  "cluster_2": {
+    "n": 20,
+    "categories": {
+      "pp_recursion": 20
+    },
+    "feature_means": {
+      "input_len": 31.75,
+      "lf_len": 233.9,
+      "n_nmod": 8.35,
+      "n_ccomp": 0.1,
+      "has_passive": 0.0,
+      "has_pp_dative": 0.0,
+      "n_and": 14.8,
+      "lf_input_ratio": 7.355631362840235,
+      "nmod_on_subj": 0.0
+    },
+    "purity": 100.0
+  },
+  "cluster_3": {
+    "n": 18,
+    "categories": {
+      "active_to_passive": 16,
+      "obj_pp_to_subj_pp": 2
+    },
+    "feature_means": {
+      "input_len": 9.055555555555555,
+      "lf_len": 48.22222222222222,
+      "n_nmod": 0.2222222222222222,
+      "n_ccomp": 0.16666666666666666,
+      "has_passive": 1.0,
+      "has_pp_dative": 0.0,
+      "n_and": 2.4444444444444446,
+      "lf_input_ratio": 5.155904280904281,
+      "nmod_on_subj": 0.1111111111111111
+    },
+    "purity": 88.88888888888889
+  }
+}

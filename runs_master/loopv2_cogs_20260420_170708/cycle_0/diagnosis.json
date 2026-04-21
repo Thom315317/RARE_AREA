@@ -1,0 +1,66 @@
+{
+  "n_analyzed": 500,
+  "n_correct": 0,
+  "diff_types": {
+    "wrong_arg_position": 292,
+    "missing_lexical_noun": 127,
+    "missing_nmod_on_subj": 57,
+    "missing_modification": 22,
+    "missing_verb_role": 2
+  },
+  "cat_dominant_diff": {
+    "active_to_passive": "wrong_arg_position",
+    "cp_recursion": "wrong_arg_position",
+    "do_dative_to_pp_dative": "wrong_arg_position",
+    "obj_omitted_transitive_to_transitive": "wrong_arg_position",
+    "obj_pp_to_subj_pp": "missing_nmod_on_subj",
+    "obj_to_subj_common": "missing_lexical_noun",
+    "obj_to_subj_proper": "wrong_arg_position",
+    "only_seen_as_transitive_subj_as_unacc_subj": "missing_lexical_noun",
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": "missing_lexical_noun",
+    "only_seen_as_unacc_subj_as_unerg_subj": "missing_lexical_noun",
+    "passive_to_active": "wrong_arg_position",
+    "pp_dative_to_do_dative": "wrong_arg_position",
+    "pp_recursion": "missing_nmod_on_subj",
+    "prim_to_inf_arg": "wrong_arg_position",
+    "prim_to_obj_common": "missing_lexical_noun",
+    "prim_to_obj_proper": "wrong_arg_position",
+    "prim_to_subj_common": "missing_lexical_noun",
+    "prim_to_subj_proper": "wrong_arg_position",
+    "subj_to_obj_common": "missing_lexical_noun",
+    "subj_to_obj_proper": "wrong_arg_position",
+    "unacc_to_transitive": "wrong_arg_position"
+  },
+  "hypotheses": {
+    "wrong_arg_position": {
+      "description": "arguments in wrong positions \u2014 structural confusion",
+      "fix_type": "generate_position_examples",
+      "confirmed": true,
+      "evidence": "structural"
+    },
+    "missing_lexical_noun": {
+      "description": "lexical noun missing \u2014 position coverage gap. Nouns: 2 subj-only, 202 obj-only, 200 both",
+      "fix_type": "generate_noun_position_swap",
+      "confirmed": true,
+      "evidence": "2 nouns seen only as subject, 202 only as object, 200 in both positions"
+    },
+    "missing_nmod_on_subj": {
+      "description": "nmod on subject: 0 in train vs 5495 on object",
+      "fix_type": "generate_nmod_on_subject",
+      "confirmed": true,
+      "evidence": "train has 0 nmod-on-subj vs 5495 nmod-on-obj"
+    },
+    "missing_modification": {
+      "description": "modification predicate missing (nmod or ccomp). Train has 5047 examples with nmod (max depth 2), 2275 with ccomp",
+      "fix_type": "generate_deeper_modification",
+      "confirmed": true,
+      "evidence": "nmod examples: 5047, ccomp examples: 2275, max nmod depth: 2"
+    },
+    "missing_verb_role": {
+      "description": "verb role missing \u2014 possible unseen voice/valency",
+      "fix_type": "generate_verb_in_missing_form",
+      "confirmed": true,
+      "evidence": "structural"
+    }
+  }
+}

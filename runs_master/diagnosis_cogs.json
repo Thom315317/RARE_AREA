@@ -1,0 +1,348 @@
+{
+  "n_analyzed": 500,
+  "n_correct": 0,
+  "diff_types": {
+    "wrong_arg_position": 292,
+    "missing_lexical_noun": 127,
+    "missing_nmod_on_subj": 57,
+    "missing_modification": 22,
+    "missing_verb_role": 2
+  },
+  "cat_dominant_diff": {
+    "active_to_passive": "wrong_arg_position",
+    "cp_recursion": "wrong_arg_position",
+    "do_dative_to_pp_dative": "wrong_arg_position",
+    "obj_omitted_transitive_to_transitive": "wrong_arg_position",
+    "obj_pp_to_subj_pp": "missing_nmod_on_subj",
+    "obj_to_subj_common": "missing_lexical_noun",
+    "obj_to_subj_proper": "wrong_arg_position",
+    "only_seen_as_transitive_subj_as_unacc_subj": "missing_lexical_noun",
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": "missing_lexical_noun",
+    "only_seen_as_unacc_subj_as_unerg_subj": "missing_lexical_noun",
+    "passive_to_active": "wrong_arg_position",
+    "pp_dative_to_do_dative": "wrong_arg_position",
+    "pp_recursion": "missing_nmod_on_subj",
+    "prim_to_inf_arg": "wrong_arg_position",
+    "prim_to_obj_common": "missing_lexical_noun",
+    "prim_to_obj_proper": "wrong_arg_position",
+    "prim_to_subj_common": "missing_lexical_noun",
+    "prim_to_subj_proper": "wrong_arg_position",
+    "subj_to_obj_common": "missing_lexical_noun",
+    "subj_to_obj_proper": "wrong_arg_position",
+    "unacc_to_transitive": "wrong_arg_position"
+  },
+  "hypotheses": {
+    "wrong_arg_position": {
+      "description": "arguments in wrong positions \u2014 structural confusion",
+      "fix_type": "generate_position_examples",
+      "confirmed": true,
+      "evidence": "structural"
+    },
+    "missing_lexical_noun": {
+      "description": "lexical noun missing \u2014 position coverage gap. Nouns: 2 subj-only, 202 obj-only, 200 both",
+      "fix_type": "generate_noun_position_swap",
+      "confirmed": true,
+      "evidence": "2 nouns seen only as subject, 202 only as object, 200 in both positions"
+    },
+    "missing_nmod_on_subj": {
+      "description": "nmod on subject: 0 in train vs 5495 on object",
+      "fix_type": "generate_nmod_on_subject",
+      "confirmed": true,
+      "evidence": "train has 0 nmod-on-subj vs 5495 nmod-on-obj"
+    },
+    "missing_modification": {
+      "description": "modification predicate missing (nmod or ccomp). Train has 5047 examples with nmod (max depth 2), 2275 with ccomp",
+      "fix_type": "generate_deeper_modification",
+      "confirmed": true,
+      "evidence": "nmod examples: 5047, ccomp examples: 2275, max nmod depth: 2"
+    },
+    "missing_verb_role": {
+      "description": "verb role missing \u2014 possible unseen voice/valency",
+      "fix_type": "generate_verb_in_missing_form",
+      "confirmed": true,
+      "evidence": "structural"
+    }
+  },
+  "wrong_arg_patterns": {
+    "other": 222,
+    "ccomp": 41,
+    "passive_no_by": 16,
+    "passive_with_by": 13
+  },
+  "wrong_arg_examples": [
+    {
+      "category": "prim_to_subj_proper",
+      "sub_pattern": "other",
+      "input": "Paula painted a cake in a closet .",
+      "gold": "paint . agent ( x _ 1 , Paula ) AND paint . theme ( x _ 1 , x _ 3 ) AND cake ( x _ 3 ) AND cake . nmod . in ( x _ 3 , x _ 6 ) AND closet ( x _ 6 )",
+      "pred": "paint . agent ( x _ 1 , Penelope ) AND paint . theme ( x _ 1 , x _ 3 ) AND cake ( x _ 3 ) AND cake . nmod . in ( x _ 3 , x _ 6 ) AND stool ( x _ 6 )",
+      "n_missing": 2,
+      "n_extra": 2,
+      "wrong_args": [
+        {
+          "pred_name": "paint . agent",
+          "gold": "('paint . agent', 'x _ 1', 'Paula')",
+          "pred_args": "('paint . agent', 'x _ 1', 'Penelope')"
+        }
+      ]
+    },
+    {
+      "category": "do_dative_to_pp_dative",
+      "sub_pattern": "other",
+      "input": "The princess teleported a cookie to the goose .",
+      "gold": "* princess ( x _ 1 ) ; * goose ( x _ 7 ) ; teleport . agent ( x _ 2 , x _ 1 ) AND teleport . theme ( x _ 2 , x _ 4 ) AND teleport . recipient ( x _ 2 , x _ 7 ) AND cookie ( x _ 4 )",
+      "pred": "* princess ( x _ 1 ) ; * goose ( x _ 7 ) ; dream . agent ( x _ 2 , x _ 1 ) AND change . theme ( x _ 2 , x _ 4 ) AND cookie ( x _ 4 ) AND cookie . recipient ( x _ 2 , x _ 7 )",
+      "n_missing": 3,
+      "n_extra": 3,
+      "wrong_args": []
+    },
+    {
+      "category": "only_seen_as_transitive_subj_as_unacc_subj",
+      "sub_pattern": "ccomp",
+      "input": "Emma declared that a cobra grew .",
+      "gold": "declare . agent ( x _ 1 , Emma ) AND declare . ccomp ( x _ 1 , x _ 5 ) AND cobra ( x _ 4 ) AND grow . theme ( x _ 5 , x _ 4 )",
+      "pred": "declare . agent ( x _ 1 , Emma ) AND declare . ccomp ( x _ 1 , x _ 5 ) AND grow . agent ( x _ 5 , x _ 4 ) AND grow ( x _ 4 )",
+      "n_missing": 2,
+      "n_extra": 2,
+      "wrong_args": []
+    },
+    {
+      "category": "obj_to_subj_proper",
+      "sub_pattern": "ccomp",
+      "input": "William tolerated that Charlie fed the cake on the stage to the boy .",
+      "gold": "* cake ( x _ 6 ) ; * stage ( x _ 9 ) ; * boy ( x _ 12 ) ; tolerate . agent ( x _ 1 , William ) AND tolerate . ccomp ( x _ 1 , x _ 4 ) AND feed . agent ( x _ 4 , Charlie ) AND feed . theme ( x _ 4 , x ",
+      "pred": "* cake ( x _ 6 ) ; * stage ( x _ 9 ) ; * boy ( x _ 12 ) ; tolerate . agent ( x _ 1 , William ) AND tolerate . ccomp ( x _ 1 , x _ 4 ) AND feed . agent ( x _ 4 , Ava ) AND feed . theme ( x _ 4 , x _ 6 ",
+      "n_missing": 3,
+      "n_extra": 3,
+      "wrong_args": [
+        {
+          "pred_name": "feed . agent",
+          "gold": "('feed . agent', 'x _ 4', 'Charlie')",
+          "pred_args": "('feed . agent', 'x _ 4', 'Ava')"
+        },
+        {
+          "pred_name": "cake . nmod . on",
+          "gold": "('cake . nmod . on', 'x _ 6', 'x _ 9')",
+          "pred_args": "('cake . nmod . on', 'x _ 9', 'x _ 12')"
+        },
+        {
+          "pred_name": "feed . recipient",
+          "gold": "('feed . recipient', 'x _ 4', 'x _ 12')",
+          "pred_args": "('feed . recipient', 'x _ 6', 'x _ 9')"
+        }
+      ]
+    },
+    {
+      "category": "prim_to_subj_proper",
+      "sub_pattern": "other",
+      "input": "Paula promised a chair beside the computer to Emma .",
+      "gold": "* computer ( x _ 6 ) ; promise . agent ( x _ 1 , Paula ) AND promise . theme ( x _ 1 , x _ 3 ) AND promise . recipient ( x _ 1 , Emma ) AND chair ( x _ 3 ) AND chair . nmod . beside ( x _ 3 , x _ 6 )",
+      "pred": "* computer ( x _ 6 ) ; promise . agent ( x _ 1 , Ella ) AND promise . theme ( x _ 1 , x _ 3 ) AND promise . recipient ( x _ 1 , Emma ) AND chair ( x _ 3 ) AND chair . nmod . beside ( x _ 3 , x _ 6 )",
+      "n_missing": 1,
+      "n_extra": 1,
+      "wrong_args": [
+        {
+          "pred_name": "promise . agent",
+          "gold": "('promise . agent', 'x _ 1', 'Paula')",
+          "pred_args": "('promise . agent', 'x _ 1', 'Ella')"
+        }
+      ]
+    },
+    {
+      "category": "obj_to_subj_proper",
+      "sub_pattern": "other",
+      "input": "Charlie loaned the cake in a house to the girl .",
+      "gold": "* cake ( x _ 3 ) ; * girl ( x _ 9 ) ; loan . agent ( x _ 1 , Charlie ) AND loan . theme ( x _ 1 , x _ 3 ) AND loan . recipient ( x _ 1 , x _ 9 ) AND cake . nmod . in ( x _ 3 , x _ 6 ) AND house ( x _ ",
+      "pred": "* cake ( x _ 3 ) ; * girl ( x _ 9 ) ; loan . agent ( x _ 1 , Ava ) AND loan . theme ( x _ 1 , x _ 3 ) AND loan . recipient ( x _ 1 , x _ 9 ) AND cake . nmod . in ( x _ 3 , x _ 6 ) AND house ( x _ 6 )",
+      "n_missing": 1,
+      "n_extra": 1,
+      "wrong_args": [
+        {
+          "pred_name": "loan . agent",
+          "gold": "('loan . agent', 'x _ 1', 'Charlie')",
+          "pred_args": "('loan . agent', 'x _ 1', 'Ava')"
+        }
+      ]
+    },
+    {
+      "category": "cp_recursion",
+      "sub_pattern": "ccomp",
+      "input": "A girl valued that Samuel admired that a monkey liked that Luna liked that Oliver respected that Savannah hoped that a penguin noticed that Emma noticed that the lawyer noticed that a cake grew .",
+      "gold": "* lawyer ( x _ 28 ) ; girl ( x _ 1 ) AND value . agent ( x _ 2 , x _ 1 ) AND value . ccomp ( x _ 2 , x _ 5 ) AND admire . agent ( x _ 5 , Samuel ) AND admire . ccomp ( x _ 5 , x _ 9 ) AND monkey ( x _",
+      "pred": "* girl ( x _ 9 ) ; girl ( x _ 1 ) AND value . agent ( x _ 2 , x _ 1 ) AND value . ccomp ( x _ 2 , x _ 5 ) AND admire . agent ( x _ 5 , Samuel ) AND admire . ccomp ( x _ 5 , x _ 9 ) AND like . agent ( ",
+      "n_missing": 13,
+      "n_extra": 4,
+      "wrong_args": [
+        {
+          "pred_name": "respect . ccomp",
+          "gold": "('respect . ccomp', 'x _ 15', 'x _ 18')",
+          "pred_args": "('respect . ccomp', 'x _ 10', 'x _ 14')"
+        },
+        {
+          "pred_name": "like . agent",
+          "gold": "('like . agent', 'x _ 9', 'x _ 8')",
+          "pred_args": "('like . agent', 'x _ 10', 'x _ 12')"
+        },
+        {
+          "pred_name": "like . agent",
+          "gold": "('like . agent', 'x _ 12', 'Luna')",
+          "pred_args": "('like . agent', 'x _ 10', 'x _ 12')"
+        }
+      ]
+    },
+    {
+      "category": "prim_to_obj_proper",
+      "sub_pattern": "other",
+      "input": "James rolled Paula .",
+      "gold": "roll . agent ( x _ 1 , James ) AND roll . theme ( x _ 1 , Paula )",
+      "pred": "roll . agent ( x _ 1 , James ) AND roll . theme ( x _ 1 , Ella )",
+      "n_missing": 1,
+      "n_extra": 1,
+      "wrong_args": [
+        {
+          "pred_name": "roll . theme",
+          "gold": "('roll . theme', 'x _ 1', 'Paula')",
+          "pred_args": "('roll . theme', 'x _ 1', 'Ella')"
+        }
+      ]
+    },
+    {
+      "category": "passive_to_active",
+      "sub_pattern": "other",
+      "input": "Jaxon squeezed the cookie in the bucket .",
+      "gold": "* cookie ( x _ 3 ) ; * bucket ( x _ 6 ) ; squeeze . agent ( x _ 1 , Jaxon ) AND squeeze . theme ( x _ 1 , x _ 3 ) AND cookie . nmod . in ( x _ 3 , x _ 6 )",
+      "pred": "* cookie ( x _ 3 ) ; * bucket ( x _ 6 ) ; expect . agent ( x _ 1 , Jaxon ) AND dust . theme ( x _ 1 , x _ 3 ) AND cookie . nmod . in ( x _ 3 , x _ 6 )",
+      "n_missing": 2,
+      "n_extra": 2,
+      "wrong_args": []
+    },
+    {
+      "category": "pp_dative_to_do_dative",
+      "sub_pattern": "other",
+      "input": "The girl shipped the cat the brush beside a machine .",
+      "gold": "* girl ( x _ 1 ) ; * cat ( x _ 4 ) ; * brush ( x _ 6 ) ; ship . agent ( x _ 2 , x _ 1 ) AND ship . recipient ( x _ 2 , x _ 4 ) AND ship . theme ( x _ 2 , x _ 6 ) AND brush . nmod . beside ( x _ 6 , x ",
+      "pred": "* girl ( x _ 1 ) ; * cat ( x _ 4 ) ; * brush ( x _ 6 ) ; investigate . agent ( x _ 2 , x _ 1 ) AND investigate . recipient ( x _ 2 , x _ 4 ) AND cat . theme ( x _ 2 , x _ 6 ) AND brush . nmod . beside",
+      "n_missing": 3,
+      "n_extra": 3,
+      "wrong_args": []
+    },
+    {
+      "category": "pp_dative_to_do_dative",
+      "sub_pattern": "other",
+      "input": "Noah shipped Olivia a chair on a bed .",
+      "gold": "ship . agent ( x _ 1 , Noah ) AND ship . recipient ( x _ 1 , Olivia ) AND ship . theme ( x _ 1 , x _ 4 ) AND chair ( x _ 4 ) AND chair . nmod . on ( x _ 4 , x _ 7 ) AND bed ( x _ 7 )",
+      "pred": "investigate . agent ( x _ 1 , Noah ) AND investigate . recipient ( x _ 1 , Olivia ) AND student ( x _ 1 , Olivia ) AND chair . theme ( x _ 3 , x _ 4 ) AND chair ( x _ 7 ) AND bed . nmod . on ( x _ 7 ,",
+      "n_missing": 6,
+      "n_extra": 6,
+      "wrong_args": [
+        {
+          "pred_name": "chair",
+          "gold": "('chair', 'x _ 4')",
+          "pred_args": "('chair', 'x _ 7')"
+        }
+      ]
+    },
+    {
+      "category": "do_dative_to_pp_dative",
+      "sub_pattern": "other",
+      "input": "The governor teleported a cake in a cabinet to Logan .",
+      "gold": "* governor ( x _ 1 ) ; teleport . agent ( x _ 2 , x _ 1 ) AND teleport . theme ( x _ 2 , x _ 4 ) AND teleport . recipient ( x _ 2 , Logan ) AND cake ( x _ 4 ) AND cake . nmod . in ( x _ 4 , x _ 7 ) AN",
+      "pred": "* governor ( x _ 1 ) ; sell . agent ( x _ 2 , x _ 1 ) AND expect . theme ( x _ 2 , x _ 4 ) AND cake ( x _ 4 ) AND cake . recipient ( x _ 2 , Logan ) AND cake . nmod . in ( x _ 4 , x _ 7 ) AND cabinet ",
+      "n_missing": 3,
+      "n_extra": 3,
+      "wrong_args": []
+    },
+    {
+      "category": "obj_omitted_transitive_to_transitive",
+      "sub_pattern": "other",
+      "input": "A poet baked the cake .",
+      "gold": "* cake ( x _ 4 ) ; poet ( x _ 1 ) AND bake . agent ( x _ 2 , x _ 1 ) AND bake . theme ( x _ 2 , x _ 4 )",
+      "pred": "* cake ( x _ 4 ) ; poet ( x _ 1 ) AND pack . agent ( x _ 2 , x _ 1 ) AND smirk . theme ( x _ 2 , x _ 4 )",
+      "n_missing": 2,
+      "n_extra": 2,
+      "wrong_args": []
+    },
+    {
+      "category": "prim_to_inf_arg",
+      "sub_pattern": "other",
+      "input": "The boy needed to crawl .",
+      "gold": "* boy ( x _ 1 ) ; need . agent ( x _ 2 , x _ 1 ) AND need . xcomp ( x _ 2 , x _ 4 ) AND crawl . agent ( x _ 4 , x _ 1 )",
+      "pred": "* boy ( x _ 1 ) ; need . agent ( x _ 2 , x _ 1 ) AND need . xcomp ( x _ 2 , x _ 4 ) AND cry . agent ( x _ 4 , x _ 1 )",
+      "n_missing": 1,
+      "n_extra": 1,
+      "wrong_args": []
+    },
+    {
+      "category": "obj_to_subj_proper",
+      "sub_pattern": "other",
+      "input": "Charlie gave a spoon to Liam .",
+      "gold": "give . agent ( x _ 1 , Charlie ) AND give . theme ( x _ 1 , x _ 3 ) AND give . recipient ( x _ 1 , Liam ) AND spoon ( x _ 3 )",
+      "pred": "give . agent ( x _ 1 , Liam ) AND give . theme ( x _ 1 , x _ 3 ) AND give . recipient ( x _ 1 , Liam ) AND spoon ( x _ 3 )",
+      "n_missing": 1,
+      "n_extra": 1,
+      "wrong_args": [
+        {
+          "pred_name": "give . agent",
+          "gold": "('give . agent', 'x _ 1', 'Charlie')",
+          "pred_args": "('give . agent', 'x _ 1', 'Liam')"
+        }
+      ]
+    },
+    {
+      "category": "prim_to_obj_proper",
+      "sub_pattern": "other",
+      "input": "Emma wired Paula to Sophia .",
+      "gold": "wire . agent ( x _ 1 , Emma ) AND wire . theme ( x _ 1 , Paula ) AND wire . recipient ( x _ 1 , Sophia )",
+      "pred": "wire . agent ( x _ 1 , Emma ) AND wire . xcomp ( x _ 1 , x _ 4 ) AND wire . agent ( x _ 4 , Sophia )",
+      "n_missing": 2,
+      "n_extra": 2,
+      "wrong_args": [
+        {
+          "pred_name": "wire . agent",
+          "gold": "('wire . agent', 'x _ 1', 'Emma')",
+          "pred_args": "('wire . agent', 'x _ 4', 'Sophia')"
+        }
+      ]
+    },
+    {
+      "category": "pp_dative_to_do_dative",
+      "sub_pattern": "other",
+      "input": "The crocodile shipped the boy a raisin .",
+      "gold": "* crocodile ( x _ 1 ) ; * boy ( x _ 4 ) ; ship . agent ( x _ 2 , x _ 1 ) AND ship . recipient ( x _ 2 , x _ 4 ) AND ship . theme ( x _ 2 , x _ 6 ) AND raisin ( x _ 6 )",
+      "pred": "* crocodile ( x _ 1 ) ; * boy ( x _ 4 ) ; investigate . agent ( x _ 2 , x _ 1 ) AND investigate . recipient ( x _ 2 , x _ 4 ) AND boy . theme ( x _ 2 , x _ 6 ) AND raisin ( x _ 6 )",
+      "n_missing": 3,
+      "n_extra": 3,
+      "wrong_args": []
+    },
+    {
+      "category": "do_dative_to_pp_dative",
+      "sub_pattern": "other",
+      "input": "The teacher teleported the cake on the dog to a bear .",
+      "gold": "* teacher ( x _ 1 ) ; * cake ( x _ 4 ) ; * dog ( x _ 7 ) ; teleport . agent ( x _ 2 , x _ 1 ) AND teleport . theme ( x _ 2 , x _ 4 ) AND teleport . recipient ( x _ 2 , x _ 10 ) AND cake . nmod . on ( ",
+      "pred": "* teacher ( x _ 1 ) ; * cake ( x _ 4 ) ; * dog ( x _ 7 ) ; expect . agent ( x _ 2 , x _ 1 ) AND draw . theme ( x _ 2 , x _ 4 ) AND cake . recipient ( x _ 2 , x _ 10 ) AND cake . nmod . on ( x _ 4 , x ",
+      "n_missing": 3,
+      "n_extra": 3,
+      "wrong_args": []
+    },
+    {
+      "category": "prim_to_inf_arg",
+      "sub_pattern": "other",
+      "input": "A prisoner attempted to crawl .",
+      "gold": "prisoner ( x _ 1 ) AND attempt . agent ( x _ 2 , x _ 1 ) AND attempt . xcomp ( x _ 2 , x _ 4 ) AND crawl . agent ( x _ 4 , x _ 1 )",
+      "pred": "prisoner ( x _ 1 ) AND attempt . agent ( x _ 2 , x _ 1 ) AND attempt . xcomp ( x _ 2 , x _ 4 ) AND walk . agent ( x _ 4 , x _ 1 )",
+      "n_missing": 1,
+      "n_extra": 1,
+      "wrong_args": []
+    },
+    {
+      "category": "prim_to_inf_arg",
+      "sub_pattern": "other",
+      "input": "The frog yearned to crawl .",
+      "gold": "* frog ( x _ 1 ) ; yearn . agent ( x _ 2 , x _ 1 ) AND yearn . xcomp ( x _ 2 , x _ 4 ) AND crawl . agent ( x _ 4 , x _ 1 )",
+      "pred": "* frog ( x _ 1 ) ; yearn . agent ( x _ 2 , x _ 1 ) AND yearn . xcomp ( x _ 2 , x _ 4 ) AND walk . agent ( x _ 4 , x _ 1 )",
+      "n_missing": 1,
+      "n_extra": 1,
+      "wrong_args": []
+    }
+  ]
+}

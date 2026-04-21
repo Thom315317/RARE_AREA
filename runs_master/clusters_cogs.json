@@ -1,0 +1,78 @@
+{
+  "cluster_0": {
+    "n": 426,
+    "categories": {
+      "subj_to_obj_proper": 23,
+      "prim_to_obj_proper": 23,
+      "do_dative_to_pp_dative": 23,
+      "pp_dative_to_do_dative": 23,
+      "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 23,
+      "prim_to_subj_proper": 23,
+      "only_seen_as_transitive_subj_as_unacc_subj": 23,
+      "obj_to_subj_proper": 23,
+      "only_seen_as_unacc_subj_as_unerg_subj": 23,
+      "prim_to_subj_common": 23,
+      "prim_to_obj_common": 23,
+      "obj_to_subj_common": 23,
+      "passive_to_active": 23,
+      "subj_to_obj_common": 23,
+      "obj_omitted_transitive_to_transitive": 23,
+      "unacc_to_transitive": 23,
+      "prim_to_inf_arg": 23,
+      "obj_pp_to_subj_pp": 21,
+      "active_to_passive": 7,
+      "pp_recursion": 4,
+      "cp_recursion": 3
+    },
+    "feature_means": {
+      "input_len": 7.753521126760563,
+      "lf_len": 51.894366197183096,
+      "n_nmod": 0.38028169014084506,
+      "n_ccomp": 0.2746478873239437,
+      "has_passive": 0.0,
+      "has_pp_dative": 0.07746478873239436,
+      "n_and": 2.9694835680751175,
+      "lf_input_ratio": 6.571547004762779,
+      "nmod_on_subj": 0.04929577464788732
+    },
+    "purity": 5.39906103286385
+  },
+  "cluster_1": {
+    "n": 18,
+    "categories": {
+      "active_to_passive": 16,
+      "obj_pp_to_subj_pp": 2
+    },
+    "feature_means": {
+      "input_len": 9.055555555555555,
+      "lf_len": 48.22222222222222,
+      "n_nmod": 0.2222222222222222,
+      "n_ccomp": 0.16666666666666666,
+      "has_passive": 1.0,
+      "has_pp_dative": 0.0,
+      "n_and": 2.4444444444444446,
+      "lf_input_ratio": 5.155904280904281,
+      "nmod_on_subj": 0.1111111111111111
+    },
+    "purity": 88.88888888888889
+  },
+  "cluster_2": {
+    "n": 39,
+    "categories": {
+      "cp_recursion": 20,
+      "pp_recursion": 19
+    },
+    "feature_means": {
+      "input_len": 34.92307692307692,
+      "lf_len": 264.38461538461536,
+      "n_nmod": 4.230769230769231,
+      "n_ccomp": 4.769230769230769,
+      "has_passive": 0.05128205128205128,
+      "has_pp_dative": 0.02564102564102564,
+      "n_and": 18.487179487179485,
+      "lf_input_ratio": 7.5421728258495,
+      "nmod_on_subj": 0.0
+    },
+    "purity": 51.28205128205128
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "checkpoint": "runs_master/B0_s42_20260418_184823/checkpoint.pt",
+  "dataset": "cogs",
+  "jepa_epochs": 10,
+  "train_surprise_mean": 0.038138736299730885,
+  "train_entropy_mean": 0.7513743838620368,
+  "gen_surprise_mean": 0.07765315269301867,
+  "gen_entropy_mean": 0.9469239908854167,
+  "by_category": {
+    "active_to_passive": {
+      "surprise_mean": 0.020729382100515066,
+      "surprise_std": 0.012441478240805392,
+      "entropy_mean": 1.01303076171875,
+      "entropy_std": 0.06439229979231176,
+      "n": 1000
+    },
+    "cp_recursion": {
+      "surprise_mean": 0.31447164323180915,
+      "surprise_std": 0.07576654959311774,
+      "entropy_mean": 1.36216748046875,
+      "entropy_std": 0.1903491454016588,
+      "n": 1000
+    },
+    "do_dative_to_pp_dative": {
+      "surprise_mean": 0.06416041749343276,
+      "surprise_std": 0.01828133502502373,
+      "entropy_mean": 0.9201572265625,
+      "entropy_std": 0.04951842536362459,
+      "n": 1000
+    },
+    "obj_omitted_transitive_to_transitive": {
+      "surprise_mean": 0.04551847197115421,
+      "surprise_std": 0.01594966464883212,
+      "entropy_mean": 0.980396484375,
+      "entropy_std": 0.08590368832806586,
+      "n": 1000
+    },
+    "obj_pp_to_subj_pp": {
+      "surprise_mean": 0.1152449945434928,
+      "surprise_std": 0.02118227557260179,
+      "entropy_mean": 1.13534326171875,
+      "entropy_std": 0.09342725195039936,
+      "n": 1000
+    },
+    "obj_to_subj_common": {
+      "surprise_mean": 0.04806476687826216,
+      "surprise_std": 0.019732765358274586,
+      "entropy_mean": 0.8585244140625,
+      "entropy_std": 0.05662298401029104,
+      "n": 1000
+    },
+    "obj_to_subj_proper": {
+      "surprise_mean": 0.058334488809108735,
+      "surprise_std": 0.01670070961054472,
+      "entropy_mean": 0.86524169921875,
+      "entropy_std": 0.07939053237059755,
+      "n": 1000
+    },
+    "only_seen_as_transitive_subj_as_unacc_subj": {
+      "surprise_mean": 0.05836538972891867,
+      "surprise_std": 0.012118301066461674,
+      "entropy_mean": 0.83382275390625,
+      "entropy_std": 0.038617297688488476,
+      "n": 1000
+    },
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": {
+      "surprise_mean": 0.06011056251451373,
+      "surprise_std": 0.01113128266870235,
+      "entropy_mean": 0.834515625,
+      "entropy_std": 0.03783433096714472,
+      "n": 1000
+    },
+    "only_seen_as_unacc_subj_as_unerg_subj": {
+      "surprise_mean": 0.05453512292727828,
+      "surprise_std": 0.01080508616518983,
+      "entropy_mean": 0.841724609375,
+      "entropy_std": 0.04286911971359233,
+      "n": 1000
+    },
+    "passive_to_active": {
+      "surprise_mean": 0.047160269740968944,
+      "surprise_std": 0.01596415016296573,
+      "entropy_mean": 0.9816767578125,
+      "entropy_std": 0.091460689829459,
+      "n": 1000
+    },
+    "pp_dative_to_do_dative": {
+      "surprise_mean": 0.06159163644909859,
+      "surprise_std": 0.015403047962153355,
+      "entropy_mean": 0.95442529296875,
+      "entropy_std": 0.06212679911220838,
+      "n": 1000
+    },
+    "pp_recursion": {
+      "surprise_mean": 0.26070426010340453,
+      "surprise_std": 0.09273217109615384,
+      "entropy_mean": 1.36315283203125,
+      "entropy_std": 0.28002784600374403,
+      "n": 1000
+    },
+    "prim_to_inf_arg": {
+      "surprise_mean": 0.028280308953486384,
+      "surprise_std": 0.01120798339409749,
+      "entropy_mean": 0.840189453125,
+      "entropy_std": 0.02059047199377104,
+      "n": 1000
+    },
+    "prim_to_obj_common": {
+      "surprise_mean": 0.050095120245590805,
+      "surprise_std": 0.01947646003514956,
+      "entropy_mean": 0.865544921875,
+      "entropy_std": 0.04044843452168608,
+      "n": 1000
+    },
+    "prim_to_obj_proper": {
+      "surprise_mean": 0.07067144334688782,
+      "surprise_std": 0.02085679982156913,
+      "entropy_mean": 0.8449931640625,
+      "entropy_std": 0.05333871798254457,
+      "n": 1000
+    },
+    "prim_to_subj_common": {
+      "surprise_mean": 0.05113781331293285,
+      "surprise_std": 0.018723628782778893,
+      "entropy_mean": 0.8359287109375,
+      "entropy_std": 0.04722042646783421,
+      "n": 1000
+    },
+    "prim_to_subj_proper": {
+      "surprise_mean": 0.05878407941758633,
+      "surprise_std": 0.0165707427702831,
+      "entropy_mean": 0.850275390625,
+      "entropy_std": 0.0689496064471548,
+      "n": 1000
+    },
+    "subj_to_obj_common": {
+      "surprise_mean": 0.04650717755872756,
+      "surprise_std": 0.020584501546020154,
+      "entropy_mean": 0.88545263671875,
+      "entropy_std": 0.044740210306780034,
+      "n": 1000
+    },
+    "subj_to_obj_proper": {
+      "surprise_mean": 0.07240699186548591,
+      "surprise_std": 0.0211716444604157,
+      "entropy_mean": 0.84898388671875,
+      "entropy_std": 0.05891624717774392,
+      "n": 1000
+    },
+    "unacc_to_transitive": {
+      "surprise_mean": 0.043841865360736844,
+      "surprise_std": 0.015690470627529485,
+      "entropy_mean": 0.9698564453125,
+      "entropy_std": 0.08162085662537157,
+      "n": 1000
+    }
+  },
+  "top500_categories": {
+    "cp_recursion": 351,
+    "pp_recursion": 149,
+    "unacc_to_transitive": 0,
+    "obj_pp_to_subj_pp": 0,
+    "only_seen_as_unacc_subj_as_obj_omitted_transitive_subj": 0,
+    "obj_omitted_transitive_to_transitive": 0,
+    "prim_to_subj_proper": 0,
+    "only_seen_as_unacc_subj_as_unerg_subj": 0,
+    "prim_to_obj_common": 0,
+    "do_dative_to_pp_dative": 0,
+    "only_seen_as_transitive_subj_as_unacc_subj": 0,
+    "subj_to_obj_proper": 0,
+    "active_to_passive": 0,
+    "prim_to_subj_common": 0,
+    "passive_to_active": 0,
+    "obj_to_subj_common": 0,
+    "prim_to_obj_proper": 0,
+    "subj_to_obj_common": 0,
+    "prim_to_inf_arg": 0,
+    "pp_dative_to_do_dative": 0,
+    "obj_to_subj_proper": 0
+  }
+}

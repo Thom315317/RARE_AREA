@@ -1,0 +1,42 @@
+{
+  "type": "auto_augment",
+  "dataset": "slog",
+  "seed": 42,
+  "generators": [
+    {
+      "type": "cp_recursion_SKIP",
+      "cluster": "cluster_0",
+      "reason": "n_ccomp=10.0 \u2014 skipped (hurts Q categories)"
+    },
+    {
+      "type": "pp_recursion",
+      "cluster": "cluster_2",
+      "reason": "n_nmod=10.0, n=58"
+    }
+  ],
+  "active_types": [
+    "pp_recursion"
+  ],
+  "epochs_run": 60,
+  "final_gen_greedy": 17.847058823529412,
+  "greedy_by_cat": {
+    "CP_3": 6.7,
+    "CP_5-12": 0.0,
+    "PP_3": 66.1,
+    "PP_5-12": 0.0,
+    "PP_modif_iobj": 32.2,
+    "PP_modif_subj": 0.0,
+    "Q_dobj_ditransV": 0.0,
+    "Q_iobj_ditransV": 26.0,
+    "Q_long_mv": 0.0,
+    "Q_modified_NPs": 14.8,
+    "Q_subj_active": 96.3,
+    "Q_subj_passive": 32.7,
+    "RC_iobj_extracted": 0.0,
+    "RC_modif_iobj": 28.6,
+    "RC_modif_subj": 0.0,
+    "center_embed_3": 0.0,
+    "center_embed_5-12": 0.0
+  },
+  "n_params": 1035608
+}
