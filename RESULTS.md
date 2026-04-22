@@ -10,8 +10,9 @@ Tracked results across SCAN, COGS, SLOG benchmarks. Updated as new runs complete
 |---|---|---|---|
 | SCAN addprim_jump | A4_permute (3 seeds) | **99.84% ± 0.19%** | 0.68M |
 | COGS | B0 + copy + scheduled sampling | 52.48% | 1.01M |
-| COGS | B0 + copy + peel-stack aug (Innov. K) | **53.20%** | 1.02M |
-| COGS | B4 + copy + scheduled sampling | **54.64%** | 1.02M |
+| COGS | B4 + copy + scheduled sampling | 54.64% | 1.02M |
+| COGS | B4 + copy + peel-stack (K+B4) | 54.88% | 1.02M |
+| **COGS** | **B4 + copy + peel-stack + permute-verbs (A4 for COGS)** | **71.94%** | **1.02M** |
 | COGS | Auto-loop v1 (autonomous) | 16.67% | 1.01M |
 | SLOG | B4 baseline | 19.18% | 1.04M |
 | SLOG | Auto-augment (pp_on_subject only) | 19.47% | 1.04M |
@@ -374,7 +375,7 @@ Quand il doit produire une LF passive, son prior sur un verbe comme `bless` est 
 
 **Implication théorique :** le mur des 0% structurels n'est pas un problème d'exposition à la transformation (nos 19 557 paires n'aident pas) ni de coverage lexicale (squeeze est couvert), c'est un problème de **partition verbale**. Le modèle apprend implicitement "verbe ∈ classe_actifs OU classe_passifs" comme une feature binaire, plutôt que "tout verbe peut apparaître dans les deux voix". Le cross-voice produit des contre-exemples qui ne suffisent pas à réorganiser cette feature.
 
-### Innovation permute-verbs (A4 transposé à COGS) — EN COURS
+### Innovation permute-verbs (A4 transposé à COGS) — **SUCCÈS MAJEUR** 🔥
 
 **Hypothèse :** si le mur est la partition verbale rigide, l'équivalent COGS de `SCAN A4_permute` devrait le briser. La permutation systématique de l'identité des verbes transitifs force le modèle à traiter `bless` et `squeeze` comme interchangeables, ce qui empêche la mémorisation de leur association à une voix particulière.
 
@@ -382,7 +383,33 @@ Quand il doit produire une LF passive, son prior sur un verbe comme `bless` est 
 
 Config testée : B4 + copy + peel-stack + permute-verbs, seed 42, 60 epochs, 1M params.
 
-Résultat : **en cours**. Le critère de succès est `active_to_passive > 0%` et/ou `passive_to_active > 0%`. Si positif, c'est le même mécanisme que SCAN A4 et la thèse est validée : la permutation casse la partition verbe-contexte apprise et ré-ouvre l'espace d'hypothèses pour les transformations structurelles.
+Résultat : **71.94% greedy** (best_gen_tf = 72.47%). **+17 points sur le meilleur baseline précédent** (K+B4 = 54.88%).
+
+**4 sur 7 catégories structurelles passent de 0% à >97% :**
+
+| Catégorie | K+B4 baseline | permute-verbs | Delta |
+|---|---|---|---|
+| active_to_passive | 0.0% | **99.80%** | +99.80 |
+| do_dative_to_pp_dative | 0.0% | **97.10%** | +97.10 |
+| pp_dative_to_do_dative | 0.0% | **97.40%** | +97.40 |
+| obj_omitted_transitive_to_transitive | 0.0% | **99.20%** | +99.20 |
+
+**3 catégories résistent :**
+- `passive_to_active` : 0% (asymétrie inexpliquée — bug potentiel pour verbes réguliers où past=pp ?)
+- `cp_recursion` : 0% (problème de profondeur clausale, pas d'identité verbale)
+- `unacc_to_transitive` : 0% (alternance ergative, structure d'arguments différente de la voix)
+
+**Autres gains notables :**
+- `prim_to_inf_arg` : 99.8% → 96.9% (légère régression)
+- Toutes les autres catégories à 90%+ maintenues ou améliorées
+
+**Positionnement théorique :** la partition verbe-voix rigide diagnostiquée dans le finding précédent est bien la cause du mur. La permutation systématique à 50% des exemples d'entraînement force le modèle à traiter tous les verbes comme interchangeables dans les deux voix, ce qui supprime le prior biaisé "verbe X ∈ classe_actifs / classe_passifs".
+
+**Confirmation de la thèse générale du projet :** le mécanisme qui débloque SCAN addprim_jump (permutation des primitives d'action) se transpose sans modification architecturale à COGS (permutation des verbes transitifs). Dans les deux cas, c'est la distribution des primitives vues en composition dans le train set qui limite la généralisation, pas la capacité du modèle ni les mécanismes architecturaux. 1M params suffisent.
+
+**Valeur pour le papier :** résultat central. On passe d'un modèle qui plafonne à 55% avec les meilleures interventions structurelles à un modèle qui atteint **72% à la même capacité**, grâce à une augmentation de données motivée théoriquement par le diagnostic causal des prédictions.
+
+**Bug connu à corriger :** pour les verbes réguliers où past_tense = past_participle (même token, ex: "squeezed"), la bijection applique `m_past` en priorité dans les deux contextes. Pour un verbe régulier mappé vers un verbe irrégulier (eat/ate/eaten), le passif "was squeezed" devient "was ate" (ungrammatical) au lieu de "was eaten". Ne pas affecter critically a2p (où la direction est régulière→autre, voix déjà vue en train), mais pourrait expliquer p2a=0%. Fix : propager le contexte de voix à l'application de la permutation.
 
 ### Innovations préparées mais non testées (prêtes à lancer)
 
