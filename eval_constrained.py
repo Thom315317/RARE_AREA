@@ -33,12 +33,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ckpt = torch.load(args.checkpoint, map_location=device, weights_only=False)
 in_w2i, out_w2i = ckpt["in_w2i"], ckpt["out_w2i"]
 
-# Rebuild model
+# Rebuild model — use stored hyperparams or fall back to legacy defaults
+n_layers = ckpt.get("n_layers", 2)
+n_heads = ckpt.get("n_heads", 4)
+ffn = ckpt.get("ffn", 256)
+
 if ckpt.get("use_tags"):
     in_to_out = build_in_to_out_map(in_w2i, out_w2i)
     token_cats = build_token_categories(in_w2i)
     model = TransformerSeq2SeqCopyTags(
         len(in_w2i), len(out_w2i), d_model=ckpt["d_model"],
+        n_heads=n_heads, n_layers=n_layers, ffn=ffn,
         max_in=ckpt["max_in"], max_out=ckpt["max_out"],
         in_to_out_map=in_to_out, token_categories=token_cats).to(device)
     print("Copy+Tags: ON")
@@ -46,12 +51,14 @@ elif ckpt.get("use_copy"):
     in_to_out = build_in_to_out_map(in_w2i, out_w2i)
     model = TransformerSeq2SeqWithCopy(
         len(in_w2i), len(out_w2i), d_model=ckpt["d_model"],
+        n_heads=n_heads, n_layers=n_layers, ffn=ffn,
         max_in=ckpt["max_in"], max_out=ckpt["max_out"],
         in_to_out_map=in_to_out).to(device)
-    print("Copy mechanism: ON")
+    print(f"Copy mechanism: ON  (d={ckpt['d_model']} n_layers={n_layers} n_heads={n_heads} ffn={ffn})")
 else:
     model = TransformerSeq2Seq(
         len(in_w2i), len(out_w2i), d_model=ckpt["d_model"],
+        n_heads=n_heads, n_layers=n_layers, ffn=ffn,
         max_in=ckpt["max_in"], max_out=ckpt["max_out"]).to(device)
     print("Copy mechanism: OFF")
 model.load_state_dict(ckpt["state_dict"])

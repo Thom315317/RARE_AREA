@@ -957,14 +957,253 @@ def generate_active_from_passive(inp, lf, pt_map):
     return new_inp, new_lf
 
 
-def generate_cross_voice_pairs(train_pairs, n_pairs=None, seed=42):
+def build_verb_perm_pool(train_pairs, in_w2i, out_w2i, morphology_fallback=True):
+    """Return a list of (past_in_id, pp_in_id, lemma_out_id) triples for every
+    transitive verb that has both a past-tense and a past-participle form available
+    (with optional morphological fallback for regular verbs).
+
+    This pool is passed to COGSDataset for A4-style verb permutation: each batch,
+    a random bijection on the pool is applied to both src (inflected forms) and
+    tgt (lemmas). Analog of SCAN's A4_permute on {walk, run, look, jump}.
+    """
+    pt_map, pp_map = build_verb_form_maps(train_pairs)
+    pp_map = dict(pp_map)
+    if morphology_fallback:
+        for lemma, past in pt_map.items():
+            if lemma not in pp_map and past.endswith("ed"):
+                pp_map[lemma] = past
+    pool = []
+    missing_inv = 0
+    missing_outv = 0
+    skipped_missing_form = 0
+    for lemma, past in pt_map.items():
+        if lemma not in pp_map:
+            skipped_missing_form += 1
+            continue
+        pp = pp_map[lemma]
+        past_id = in_w2i.get(past)
+        pp_id = in_w2i.get(pp)
+        lemma_id = out_w2i.get(lemma)
+        if past_id is None or pp_id is None:
+            missing_inv += 1
+            continue
+        if lemma_id is None:
+            missing_outv += 1
+            continue
+        pool.append((past_id, pp_id, lemma_id))
+    stats = {"pool_size": len(pool),
+             "skipped_missing_form": skipped_missing_form,
+             "missing_input_vocab": missing_inv,
+             "missing_output_vocab": missing_outv,
+             "pt_map_size": len(pt_map), "pp_map_size": len(pp_map)}
+    return pool, stats
+
+
+def _extract_verb_lemma_from_lf(lf):
+    toks = lf.split()
+    for j in range(len(toks) - 2):
+        if toks[j + 1] == "." and toks[j + 2] in ("agent", "theme"):
+            return toks[j]
+    return None
+
+
+# ══════════════════════════════════════════════════════════════
+# Causal anonymization (Innovation: --causal-curriculum)
+# ══════════════════════════════════════════════════════════════
+ROLE_TOKENS = ("VERB", "AGENT", "THEME", "RECIPIENT")
+
+
+def anonymize_example(inp, lf):
+    """Replace verb, agent, theme, recipient with role tokens (VERB/AGENT/...).
+    Preserves structural tokens (., AND, ;, (, ), ,, x, _, numbers, determiners, was, by, to, that).
+    Returns (anon_input, anon_lf) or None if the example can't be cleanly anonymized.
+    """
+    lf_toks = lf.split()
+    inp_toks = inp.split()
+
+    # Step 1: build variable -> noun map from single-arg noun predicates
+    noun_of_var = {}
+    j = 0
+    while j < len(lf_toks):
+        if j + 5 < len(lf_toks) and lf_toks[j + 1] == "(" and lf_toks[j + 2] == "x" \
+                and lf_toks[j + 3] == "_" and lf_toks[j + 4].isdigit() \
+                and lf_toks[j + 5] == ")":
+            noun = lf_toks[j]
+            if noun not in ("*", "AND", ";"):
+                noun_of_var[f"x_{lf_toks[j + 4]}"] = noun
+            j += 6
+        else:
+            j += 1
+
+    # Step 2: collect verb lemmas + role fillers + verb event position
+    verb_lemmas = set()
+    role_fillers = {"agent": set(), "theme": set(), "recipient": set()}
+    verb_event_pos = None
+    j = 0
+    while j < len(lf_toks) - 6:
+        if lf_toks[j + 1] == "." and lf_toks[j + 2] in ("agent", "theme", "recipient") \
+                and lf_toks[j + 3] == "(":
+            rel = lf_toks[j + 2]
+            verb = lf_toks[j]
+            verb_lemmas.add(verb)
+            # Event position = first arg (x_N after "(")
+            if lf_toks[j + 4] == "x" and lf_toks[j + 5] == "_" and lf_toks[j + 6].isdigit():
+                if verb_event_pos is None and rel == "agent":
+                    verb_event_pos = int(lf_toks[j + 6])
+            # Second arg = filler (after comma)
+            k = j + 4
+            while k < len(lf_toks) and lf_toks[k] != ",":
+                k += 1
+            if k + 1 < len(lf_toks):
+                if k + 3 < len(lf_toks) and lf_toks[k + 1] == "x" \
+                        and lf_toks[k + 2] == "_" and lf_toks[k + 3].isdigit():
+                    filler_var = f"x_{lf_toks[k + 3]}"
+                    fn = noun_of_var.get(filler_var)
+                    if fn is not None:
+                        role_fillers[rel].add(fn)
+                else:
+                    candidate = lf_toks[k + 1]
+                    if candidate and candidate[0].isupper() and candidate.isalpha():
+                        role_fillers[rel].add(candidate)
+            j += 3
+        else:
+            j += 1
+
+    if not verb_lemmas or verb_event_pos is None:
+        return None
+
+    # Role priority: AGENT > THEME > RECIPIENT (if same noun fills multiple, take first)
+    noun_to_role = {}
+    for n in role_fillers["agent"]:
+        noun_to_role[n] = "AGENT"
+    for n in role_fillers["theme"]:
+        noun_to_role.setdefault(n, "THEME")
+    for n in role_fillers["recipient"]:
+        noun_to_role.setdefault(n, "RECIPIENT")
+
+    if not noun_to_role:
+        return None
+
+    # Step 3: rewrite LF tokens
+    anon_lf_toks = []
+    for tok in lf_toks:
+        if tok in verb_lemmas:
+            anon_lf_toks.append("VERB")
+        elif tok in noun_to_role:
+            anon_lf_toks.append(noun_to_role[tok])
+        else:
+            anon_lf_toks.append(tok)
+    anon_lf = " ".join(anon_lf_toks)
+
+    # Step 4: rewrite input
+    # Verb position known; replace that token.
+    # For other positions, replace tokens that match noun_to_role keys.
+    anon_inp_toks = []
+    for i, tok in enumerate(inp_toks):
+        if i == verb_event_pos:
+            anon_inp_toks.append("VERB")
+        elif tok in noun_to_role:
+            anon_inp_toks.append(noun_to_role[tok])
+        elif tok.lower() in noun_to_role:
+            anon_inp_toks.append(noun_to_role[tok.lower()])
+        else:
+            anon_inp_toks.append(tok)
+    anon_inp = " ".join(anon_inp_toks)
+    return anon_inp, anon_lf
+
+
+def generate_anon_pairs(source_pairs, n=None, seed=42):
+    """Anonymize examples from source (train + cv). Returns list of
+    (anon_input, anon_lf, 'anon') suitable for appending to train pool."""
+    rng = random.Random(seed)
+    results = []
+    for inp, lf, _ in source_pairs:
+        r = anonymize_example(inp, lf)
+        if r is None:
+            continue
+        results.append((r[0], r[1], "anon"))
+    # Dedupe by anon_input (the same active→passive yields same anon)
+    seen = set()
+    unique = []
+    for c in results:
+        if c[0] not in seen:
+            seen.add(c[0])
+            unique.append(c)
+    rng.shuffle(unique)
+    if n is not None and n > 0 and len(unique) > n:
+        unique = unique[:n]
+    return unique
+
+
+def generate_targeted_voice_pairs(train_pairs, target_verb, target_voice,
+                                   n=50, seed=42, morphology_fallback=True):
+    """Generate N examples of `target_verb` in `target_voice` by transforming
+    train examples with that verb in the opposite voice.
+
+    target_voice in {'passive', 'active'} — the voice we WANT to produce.
+    Uses morphology fallback by default so active-only verbs like 'bless'
+    can get a passive form (blessed).
+    """
+    rng = random.Random(seed)
+    pt_map, pp_map = build_verb_form_maps(train_pairs)
+    if morphology_fallback:
+        for lemma, past in pt_map.items():
+            if lemma not in pp_map and past.endswith("ed"):
+                pp_map[lemma] = past
+        for lemma, ppw in pp_map.items():
+            if lemma not in pt_map and ppw.endswith("ed"):
+                pt_map[lemma] = ppw
+
+    results = []
+    for inp, lf, _ in train_pairs:
+        verb = _extract_verb_lemma_from_lf(lf)
+        if verb != target_verb:
+            continue
+        if target_voice == "passive":
+            res = generate_passive_from_active(inp, lf, pp_map)
+            tag = f"cv_boost_{target_verb}_passive"
+        elif target_voice == "active":
+            res = generate_active_from_passive(inp, lf, pt_map)
+            tag = f"cv_boost_{target_verb}_active"
+        else:
+            continue
+        if res is not None:
+            results.append((res[0], res[1], tag))
+
+    # Dedupe by input
+    seen = set()
+    unique = []
+    for c in results:
+        if c[0] not in seen:
+            seen.add(c[0])
+            unique.append(c)
+    rng.shuffle(unique)
+    return unique[:n]
+
+
+def generate_cross_voice_pairs(train_pairs, n_pairs=None, seed=42,
+                                morphology_fallback=False):
     """Generate cross-voice (active↔passive) augmentation pairs from train.
 
     Only handles simple transitive examples (no nmod / ccomp / recipient).
     Returns a list of (input, lf, source_tag) suitable for appending to train.
+
+    morphology_fallback: if True, for each verb in pt_map but missing in pp_map,
+    assume regular morphology (past_tense ends in 'ed' → past_participle = past_tense).
+    Enables coverage of verbs like 'bless → blessed' that appear only in active
+    in train but whose regular form lets us produce the passive.
     """
     rng = random.Random(seed)
     pt_map, pp_map = build_verb_form_maps(train_pairs)
+    n_morph_added = 0
+    if morphology_fallback:
+        for lemma, past in pt_map.items():
+            if lemma in pp_map:
+                continue
+            # Regular verb heuristic: past form ends in "ed"
+            if past.endswith("ed"):
+                pp_map[lemma] = past
+                n_morph_added += 1
     # Candidate pool: all (inp, lf) in train, try both directions
     candidates = []
     n_ok_a2p, n_ok_p2a, n_skip = 0, 0, 0
@@ -992,7 +1231,8 @@ def generate_cross_voice_pairs(train_pairs, n_pairs=None, seed=42):
         unique = unique[:n_pairs]
     return unique, {"n_a2p_generated": n_ok_a2p, "n_p2a_generated": n_ok_p2a,
                     "n_skipped": n_skip, "pp_map_size": len(pp_map),
-                    "pt_map_size": len(pt_map), "n_unique_final": len(unique)}
+                    "pt_map_size": len(pt_map), "n_unique_final": len(unique),
+                    "n_morph_fallback_added": n_morph_added}
 
 
 def _is_verb_cluster(tokens, train_pairs):
@@ -1046,7 +1286,8 @@ class COGSDataset(Dataset):
     the target (wrapped with BOS/EOS). Requires a unified vocabulary."""
 
     def __init__(self, pairs, in_w2i, out_w2i, max_out=MAX_OUT,
-                 perm_classes=None, bidirectional=False):
+                 perm_classes=None, bidirectional=False, verb_perm_pool=None,
+                 verb_perm_prob=0.5):
         self.data = []
         self.cats = []
         bos = out_w2i[BOS]
@@ -1062,6 +1303,11 @@ class COGSDataset(Dataset):
         self.bidirectional = bidirectional
         self.bos = bos
         self.eos = eos
+        # Verb permutation: pool of (past_in_id, pp_in_id, lemma_out_id) tuples.
+        # With probability verb_perm_prob, a random bijection on the pool is drawn
+        # and applied consistently to src (past + pp forms) and tgt (lemma).
+        self.verb_perm_pool = verb_perm_pool if verb_perm_pool and len(verb_perm_pool) >= 2 else None
+        self.verb_perm_prob = verb_perm_prob
 
     def __len__(self): return len(self.data)
 
@@ -1079,6 +1325,18 @@ class COGSDataset(Dataset):
                     m_out[cls[k][1]] = cls[order[k]][1]
             src = [m_in.get(t, t)  for t in src]
             tgt = [m_out.get(t, t) for t in tgt]
+        # Verb permutation: bijection on the verb pool at verb_perm_prob.
+        # Analogous to A4_permute on SCAN: shuffles verb identities while keeping structure.
+        if self.verb_perm_pool is not None and random.random() < self.verb_perm_prob:
+            pool = self.verb_perm_pool
+            K = len(pool)
+            order = list(range(K))
+            random.shuffle(order)
+            m_past = {pool[k][0]: pool[order[k]][0] for k in range(K)}
+            m_pp   = {pool[k][1]: pool[order[k]][1] for k in range(K)}
+            m_lem  = {pool[k][2]: pool[order[k]][2] for k in range(K)}
+            src = [m_past.get(t, m_pp.get(t, t)) for t in src]
+            tgt = [m_lem.get(t, t) for t in tgt]
         # Bidirectional swap: 50% chance
         if self.bidirectional and random.random() < 0.5:
             # new_src = old tgt without BOS/EOS
@@ -2042,12 +2300,17 @@ def train_one_run(variant: str, seed: int, args):
     if getattr(args, "cross_voice", False):
         cv_n = getattr(args, "cross_voice_n", 0)
         cv_oversample = max(1, getattr(args, "cross_voice_oversample", 1))
+        cv_morph = getattr(args, "cross_voice_morphology", False)
         cv_pairs, cv_stats = generate_cross_voice_pairs(
-            train_pairs, n_pairs=(cv_n if cv_n > 0 else None), seed=seed)
+            train_pairs, n_pairs=(cv_n if cv_n > 0 else None), seed=seed,
+            morphology_fallback=cv_morph)
         cv_stats["oversample"] = cv_oversample
+        cv_stats["morphology_fallback"] = cv_morph
         print(f"CROSS-VOICE augmentation ON:")
         print(f"  past-tense map: {cv_stats['pt_map_size']} verbs  "
-              f"past-participle map: {cv_stats['pp_map_size']} verbs")
+              f"past-participle map: {cv_stats['pp_map_size']} verbs"
+              + (f"  (+{cv_stats['n_morph_fallback_added']} regular-ed fallbacks)"
+                 if cv_morph and cv_stats.get('n_morph_fallback_added') else ""))
         print(f"  candidates: a2p={cv_stats['n_a2p_generated']}  "
               f"p2a={cv_stats['n_p2a_generated']}  skipped={cv_stats['n_skipped']}")
         n_unique = len(cv_pairs)
@@ -2064,6 +2327,48 @@ def train_one_run(variant: str, seed: int, args):
         train_pairs = train_pairs + cv_pairs_final
         with open(os.path.join(run_dir, "cross_voice_stats.json"), "w") as f:
             json.dump(cv_stats, f, indent=2)
+
+    # Innovation: Targeted cross-voice boost for bless (passive) + squeeze (active)
+    if getattr(args, "cv_boost_bless_squeeze", False):
+        cv_boost_n = getattr(args, "cv_boost_n", 50)
+        bless_passives = generate_targeted_voice_pairs(
+            train_pairs, target_verb="bless", target_voice="passive",
+            n=cv_boost_n, seed=seed, morphology_fallback=True)
+        squeeze_actives = generate_targeted_voice_pairs(
+            train_pairs, target_verb="squeeze", target_voice="active",
+            n=cv_boost_n, seed=seed + 1, morphology_fallback=True)
+        print(f"CV-BOOST (targeted) ON: bless passives={len(bless_passives)}  "
+              f"squeeze actives={len(squeeze_actives)}  (n_per_verb={cv_boost_n})")
+        for i, (a, l, tag) in enumerate(bless_passives[:2]):
+            print(f"  boost_b{i}: {a}")
+            print(f"            {l[:110]}...")
+        for i, (a, l, tag) in enumerate(squeeze_actives[:2]):
+            print(f"  boost_s{i}: {a}")
+            print(f"            {l[:110]}...")
+        train_pairs = train_pairs + bless_passives + squeeze_actives
+
+    # Innovation: Causal curriculum — generate anonymized pool from train + cv pairs
+    causal_curriculum = getattr(args, "causal_curriculum", False)
+    anon_pairs = []
+    if causal_curriculum:
+        # Source = everything that looks like a real training example with role predicates.
+        # The anonymizer keeps only those where it can identify at least one role filler.
+        source_for_anon = list(train_pairs)  # includes peel-stack + cross-voice if enabled
+        cap_anon = getattr(args, "causal_n_anon", 0)
+        anon_pairs = generate_anon_pairs(source_for_anon,
+                                         n=(cap_anon if cap_anon > 0 else None),
+                                         seed=seed)
+        print(f"CAUSAL CURRICULUM (anonymization) ON:")
+        print(f"  source pool: {len(source_for_anon)} examples  "
+              f"anon generated: {len(anon_pairs)} unique anonymized")
+        for i, (a, l, _t) in enumerate(anon_pairs[:3]):
+            print(f"  anon{i}: {a}")
+            print(f"         {l[:130]}...")
+        # Add anon pairs to train_pairs so role tokens land in vocab
+        train_pairs = train_pairs + anon_pairs
+        if len(anon_pairs) == 0:
+            print("WARNING: 0 anonymized examples generated — causal curriculum will be disabled at batch time.")
+            causal_curriculum = False
 
     print(f"train: {len(train_pairs)}  dev: {len(dev_pairs)}  gen: {len(gen_pairs)}")
 
@@ -2143,9 +2448,27 @@ def train_one_run(variant: str, seed: int, args):
     with open(os.path.join(run_dir, "permutation_classes.json"), "w") as f:
         json.dump(perm_log, f, indent=2)
 
+    # Build verb permutation pool (A4-style for COGS)
+    verb_perm_pool = None
+    verb_perm_prob = getattr(args, "permute_verbs_prob", 0.5)
+    if getattr(args, "permute_verbs", False):
+        verb_perm_pool, vpp_stats = build_verb_perm_pool(
+            train_pairs, in_w2i, out_w2i, morphology_fallback=True)
+        print(f"VERB PERMUTATION ON: pool size={vpp_stats['pool_size']} verbs  "
+              f"(pt_map={vpp_stats['pt_map_size']}, pp_map={vpp_stats['pp_map_size']}, "
+              f"skipped={vpp_stats['skipped_missing_form']}) prob={verb_perm_prob}")
+        if vpp_stats["missing_input_vocab"] or vpp_stats["missing_output_vocab"]:
+            print(f"  WARNING: {vpp_stats['missing_input_vocab']} verbs skipped for missing input ids, "
+                  f"{vpp_stats['missing_output_vocab']} for missing output lemma ids")
+        if len(verb_perm_pool) < 2:
+            print("  Pool too small for permutation — disabling verb permutation.")
+            verb_perm_pool = None
+
     tr_ds = COGSDataset(train_pairs, in_w2i, out_w2i,
                         perm_classes=perm_classes if variant in ("B1", "B2", "B2b", "B2c", "B4", "B4_turbo", "B5", "B5_lite", "B6", "B7a", "B7c") else None,
-                        bidirectional=bidirectional)
+                        bidirectional=bidirectional,
+                        verb_perm_pool=verb_perm_pool,
+                        verb_perm_prob=verb_perm_prob)
     # dev and gen are ALWAYS in forward direction (we evaluate phrase → LF)
     dv_ds = COGSDataset(dev_pairs,   in_w2i, out_w2i)
     ge_ds = COGSDataset(gen_pairs,   in_w2i, out_w2i)
@@ -2154,6 +2477,137 @@ def train_one_run(variant: str, seed: int, args):
     tr_ld = DataLoader(tr_ds, args.batch_size, shuffle=True,  collate_fn=collate, num_workers=0, pin_memory=True)
     dv_ld = DataLoader(dv_ds, eval_bs, shuffle=False, collate_fn=collate, num_workers=0, pin_memory=True)
     ge_ld = DataLoader(ge_ds, eval_bs, shuffle=False, collate_fn=collate, num_workers=0, pin_memory=True)
+
+    # Causal curriculum: 3-pool triple batch iterator
+    tr_ld_causal = None
+    if causal_curriculum and len(anon_pairs) > 0:
+        causal_ratio = getattr(args, "causal_ratio", 0.33)
+        n_anon_batch = max(1, int(round(args.batch_size * causal_ratio)))
+        remaining = args.batch_size - n_anon_batch
+        n_orig_batch = remaining // 2
+        n_cv_batch = remaining - n_orig_batch
+
+        orig_pool_causal = [p for p in train_pairs
+                            if not (len(p) >= 3 and isinstance(p[2], str)
+                                    and (p[2].startswith("cross_voice") or p[2] == "anon"
+                                         or p[2].startswith("cv_boost")))]
+        cv_pool_causal = [p for p in train_pairs
+                          if len(p) >= 3 and isinstance(p[2], str)
+                          and p[2].startswith("cross_voice")]
+        anon_pool_causal = anon_pairs
+
+        # Fall back gracefully if cv pool is empty
+        if len(cv_pool_causal) == 0:
+            print("WARNING: causal curriculum has no cross-voice pool; collapsing to anon + orig.")
+            n_orig_batch = remaining
+            n_cv_batch = 0
+
+        print(f"CAUSAL CURRICULUM batches: {n_orig_batch} orig + {n_cv_batch} cv + {n_anon_batch} anon "
+              f"(batch_size={args.batch_size})")
+        print(f"  Pools: orig={len(orig_pool_causal)} cv={len(cv_pool_causal)} anon={len(anon_pool_causal)}")
+
+        orig_ds_causal = COGSDataset(
+            orig_pool_causal, in_w2i, out_w2i,
+            perm_classes=perm_classes if variant in ("B1", "B2", "B2b", "B2c", "B4", "B4_turbo", "B5", "B5_lite", "B6", "B7a", "B7c") else None,
+            bidirectional=bidirectional)
+        cv_ds_causal = COGSDataset(cv_pool_causal, in_w2i, out_w2i,
+                                    perm_classes=None, bidirectional=bidirectional) if cv_pool_causal else None
+        anon_ds_causal = COGSDataset(anon_pool_causal, in_w2i, out_w2i,
+                                      perm_classes=None, bidirectional=bidirectional)
+
+        class CausalTripleBatchIterator:
+            def __init__(self, orig_ds, cv_ds, anon_ds, n_orig, n_cv, n_anon):
+                self.orig_ds = orig_ds
+                self.cv_ds = cv_ds
+                self.anon_ds = anon_ds
+                self.n_orig = n_orig
+                self.n_cv = n_cv
+                self.n_anon = n_anon
+            def __len__(self):
+                return len(self.orig_ds) // max(self.n_orig, 1)
+            def __iter__(self):
+                orig_idx = list(range(len(self.orig_ds)))
+                random.shuffle(orig_idx)
+                n_batches = len(orig_idx) // max(self.n_orig, 1)
+                cv_pool = list(range(len(self.cv_ds))) if self.cv_ds is not None else []
+                anon_pool = list(range(len(self.anon_ds)))
+                for b in range(n_batches):
+                    batch_orig_ids = orig_idx[b * self.n_orig:(b + 1) * self.n_orig]
+                    items = [self.orig_ds[i] for i in batch_orig_ids]
+                    if self.n_cv > 0 and cv_pool:
+                        items += [self.cv_ds[random.choice(cv_pool)] for _ in range(self.n_cv)]
+                    items += [self.anon_ds[random.choice(anon_pool)] for _ in range(self.n_anon)]
+                    random.shuffle(items)
+                    yield collate(items)
+
+        tr_ld_causal = CausalTripleBatchIterator(
+            orig_ds_causal, cv_ds_causal, anon_ds_causal,
+            n_orig_batch, n_cv_batch, n_anon_batch)
+
+    # Balanced curriculum: each batch has a fixed cv/orig ratio
+    curriculum_balanced = getattr(args, "curriculum_balanced", False)
+    cv_ratio = getattr(args, "cv_ratio", 0.3)
+    tr_ld_balanced = None
+    if curriculum_balanced:
+        orig_pairs = [p for p in train_pairs
+                      if not (len(p) >= 3 and isinstance(p[2], str) and p[2].startswith("cross_voice"))]
+        cv_pairs = [p for p in train_pairs
+                    if len(p) >= 3 and isinstance(p[2], str) and p[2].startswith("cross_voice")]
+        if len(cv_pairs) == 0:
+            print("WARNING: --curriculum-balanced specified but no cross_voice pairs in train. Disabling.")
+            curriculum_balanced = False
+        else:
+            n_cv_batch = max(1, int(round(args.batch_size * cv_ratio)))
+            n_orig_batch = args.batch_size - n_cv_batch
+            print(f"BALANCED CURRICULUM: cv_ratio={cv_ratio} → each batch = "
+                  f"{n_orig_batch} orig + {n_cv_batch} cv (batch_size={args.batch_size})")
+            print(f"  Pools: {len(orig_pairs)} orig, {len(cv_pairs)} cv")
+            orig_ds = COGSDataset(
+                orig_pairs, in_w2i, out_w2i,
+                perm_classes=perm_classes if variant in ("B1", "B2", "B2b", "B2c", "B4", "B4_turbo", "B5", "B5_lite", "B6", "B7a", "B7c") else None,
+                bidirectional=bidirectional)
+            cv_ds = COGSDataset(cv_pairs, in_w2i, out_w2i,
+                                perm_classes=None, bidirectional=bidirectional)
+
+            class BalancedBatchIterator:
+                def __init__(self, orig_ds, cv_ds, n_orig, n_cv):
+                    self.orig_ds = orig_ds; self.cv_ds = cv_ds
+                    self.n_orig = n_orig; self.n_cv = n_cv
+                def __len__(self):
+                    return len(self.orig_ds) // self.n_orig
+                def __iter__(self):
+                    orig_idx = list(range(len(self.orig_ds)))
+                    random.shuffle(orig_idx)
+                    n_batches = len(orig_idx) // self.n_orig
+                    cv_pool = list(range(len(self.cv_ds)))
+                    for b in range(n_batches):
+                        batch_orig_ids = orig_idx[b * self.n_orig:(b + 1) * self.n_orig]
+                        batch_cv_ids = [random.choice(cv_pool) for _ in range(self.n_cv)]
+                        items = ([self.orig_ds[i] for i in batch_orig_ids] +
+                                 [self.cv_ds[i] for i in batch_cv_ids])
+                        random.shuffle(items)
+                        yield collate(items)
+
+            tr_ld_balanced = BalancedBatchIterator(orig_ds, cv_ds, n_orig_batch, n_cv_batch)
+
+    # Reversed curriculum: Phase 1 = cross-voice examples only, then Phase 2 = full train
+    curriculum_passive = getattr(args, "curriculum_passive_first", False)
+    curriculum_switch = getattr(args, "curriculum_switch_epoch", 10)
+    tr_ld_phase1 = None
+    if curriculum_passive:
+        cv_only_pairs = [p for p in train_pairs
+                         if len(p) >= 3 and isinstance(p[2], str) and p[2].startswith("cross_voice")]
+        if len(cv_only_pairs) == 0:
+            print("WARNING: --curriculum-passive-first specified but no cross_voice pairs in train. Disabling curriculum.")
+            curriculum_passive = False
+        else:
+            print(f"REVERSED CURRICULUM: Phase 1 (epochs 0-{curriculum_switch - 1}) = "
+                  f"{len(cv_only_pairs)} cross-voice pairs ONLY; "
+                  f"Phase 2 (ep {curriculum_switch}+) = full train ({len(train_pairs)} pairs).")
+            tr_ds_phase1 = COGSDataset(cv_only_pairs, in_w2i, out_w2i,
+                                       perm_classes=None, bidirectional=bidirectional)
+            tr_ld_phase1 = DataLoader(tr_ds_phase1, args.batch_size, shuffle=True,
+                                       collate_fn=collate, num_workers=0, pin_memory=True)
 
     # Clip very long targets from vocab-side max_out (safety)
     mx_in = max(MAX_IN, max(len(p[0].split()) for p in train_pairs + dev_pairs + gen_pairs) + 2)
@@ -2171,6 +2625,9 @@ def train_one_run(variant: str, seed: int, args):
         print(f"Copy+Tags mechanism ON: {n_shared}/{len(in_w2i)} input tokens mapped")
         model = TransformerSeq2SeqCopyTags(len(in_w2i), len(out_w2i),
                                            d_model=args.d_model,
+                                           n_heads=args.n_heads,
+                                           n_layers=args.n_layers,
+                                           ffn=args.ffn,
                                            max_in=mx_in, max_out=mx_out,
                                            in_to_out_map=in_to_out,
                                            token_categories=token_cats).to(device)
@@ -2181,11 +2638,17 @@ def train_one_run(variant: str, seed: int, args):
         print(f"Copy mechanism ON: {n_shared}/{len(in_w2i)} input tokens mapped to output vocab")
         model = TransformerSeq2SeqWithCopy(len(in_w2i), len(out_w2i),
                                            d_model=args.d_model,
+                                           n_heads=args.n_heads,
+                                           n_layers=args.n_layers,
+                                           ffn=args.ffn,
                                            max_in=mx_in, max_out=mx_out,
                                            in_to_out_map=in_to_out).to(device)
     else:
         model = TransformerSeq2Seq(len(in_w2i), len(out_w2i),
                                    d_model=args.d_model,
+                                   n_heads=args.n_heads,
+                                   n_layers=args.n_layers,
+                                   ffn=args.ffn,
                                    max_in=mx_in, max_out=mx_out).to(device)
     # Bidirectional: tie input/output embeddings (single embedding for unified vocab)
     if bidirectional:
@@ -2285,7 +2748,25 @@ def train_one_run(variant: str, seed: int, args):
         else:
             tfr = 1.0
 
-        for src, src_mask, tgt, _, _ in tr_ld:
+        # Curriculum selection priority: causal > balanced > passive-first > default
+        if causal_curriculum and tr_ld_causal is not None:
+            current_tr_ld = tr_ld_causal
+            if ep == 0:
+                print(f"  [curriculum] causal 3-track batches for {args.epochs} epochs")
+        elif curriculum_balanced and tr_ld_balanced is not None:
+            current_tr_ld = tr_ld_balanced
+            if ep == 0:
+                print(f"  [curriculum] balanced batches for {args.epochs} epochs")
+        elif curriculum_passive and tr_ld_phase1 is not None and ep < curriculum_switch:
+            current_tr_ld = tr_ld_phase1
+            if ep == 0:
+                print(f"  [curriculum] Phase 1 begins — cv-only training for {curriculum_switch} epochs")
+        else:
+            current_tr_ld = tr_ld
+            if curriculum_passive and ep == curriculum_switch:
+                print(f"  [curriculum] Phase 2 begins ep={ep} — switching to full train")
+
+        for src, src_mask, tgt, _, _ in current_tr_ld:
             src = src.to(device); src_mask = src_mask.to(device); tgt = tgt.to(device)
             tgt_in, tgt_out = tgt[:, :-1], tgt[:, 1:]
             opt.zero_grad(set_to_none=True)
@@ -2479,6 +2960,9 @@ def train_one_run(variant: str, seed: int, args):
     torch.save({"state_dict": model.state_dict(), "in_w2i": in_w2i,
                 "out_w2i": out_w2i, "variant": variant,
                 "d_model": args.d_model,
+                "n_layers": args.n_layers,
+                "n_heads": args.n_heads,
+                "ffn": args.ffn,
                 "max_in": model.max_in, "max_out": model.max_out,
                 "use_copy": use_copy, "use_tags": use_tags,
                }, os.path.join(run_dir, "checkpoint.pt"))
@@ -2503,6 +2987,12 @@ if __name__ == "__main__":
     p.add_argument("--eval-batch-size", type=int, default=16,
                    help="Batch size for eval (smaller to avoid OOM on long outputs)")
     p.add_argument("--d-model", type=int, default=128)
+    p.add_argument("--n-layers", type=int, default=2,
+                   help="Number of encoder AND decoder layers (symmetric, default 2+2)")
+    p.add_argument("--n-heads", type=int, default=4,
+                   help="Number of attention heads (default 4). Must divide d-model.")
+    p.add_argument("--ffn", type=int, default=256,
+                   help="Feed-forward dimension (default 256). Rule of thumb: 4 × d-model.")
     p.add_argument("--lr", type=float, default=3e-4)
     p.add_argument("--device", type=str, default="cuda")
     p.add_argument("--patience", type=int, default=20)
@@ -2545,7 +3035,31 @@ if __name__ == "__main__":
                    help="Cap on number of cross-voice pairs added (0 = all available)")
     p.add_argument("--cross-voice-oversample", type=int, default=1,
                    help="Repeat cross-voice pairs N times in train (to up-weight them)")
+    p.add_argument("--cross-voice-morphology", action="store_true",
+                   help="For verbs in pt_map but missing in pp_map, use regular -ed heuristic to derive pp (e.g. bless → blessed). Enables passives for active-only verbs.")
+    p.add_argument("--cv-boost-bless-squeeze", action="store_true",
+                   help="Add N targeted cross-voice pairs: bless in passive + squeeze in active. N controlled by --cv-boost-n.")
+    p.add_argument("--cv-boost-n", type=int, default=50,
+                   help="Number of targeted examples per boost verb (default 50)")
+    p.add_argument("--causal-curriculum", action="store_true",
+                   help="3-track causal curriculum: every batch contains anonymized (structure) + orig + cross-voice examples. Requires --cross-voice.")
+    p.add_argument("--causal-ratio", type=float, default=0.33,
+                   help="Fraction of anonymized examples per batch (default 0.33 = 1/3). Remaining split 50/50 between orig and cv.")
+    p.add_argument("--causal-n-anon", type=int, default=0,
+                   help="Cap the size of the anon pool (0 = use all anonymizable examples from train+cv)")
+    p.add_argument("--permute-verbs", action="store_true",
+                   help="A4-style verb permutation: random bijection on transitive verbs applied per __getitem__ (prob 0.5). Shuffles verb identity while keeping structure.")
+    p.add_argument("--permute-verbs-prob", type=float, default=0.5,
+                   help="Probability per example of applying the verb permutation (default 0.5)")
     p.add_argument("--tfr-start", type=int, default=20,
                    help="Epoch at which scheduled sampling begins ramping TFR from 1.0→0.5 (copy only)")
+    p.add_argument("--curriculum-passive-first", action="store_true",
+                   help="Reversed curriculum: train on cross-voice pairs ONLY for --curriculum-switch-epoch epochs, then switch to full train (requires --cross-voice)")
+    p.add_argument("--curriculum-switch-epoch", type=int, default=10,
+                   help="Epoch at which phase 1 (cv-only) transitions to phase 2 (full train)")
+    p.add_argument("--curriculum-balanced", action="store_true",
+                   help="Every batch has a fixed cv/orig ratio (requires --cross-voice). See --cv-ratio.")
+    p.add_argument("--cv-ratio", type=float, default=0.3,
+                   help="Fraction of cross-voice examples per batch when --curriculum-balanced is on")
     args = p.parse_args()
     train_one_run(args.variant, args.seed, args)

@@ -77,6 +77,10 @@ Note: `addprim_turn_left` is already solved by the baseline (train covers turn-l
 | B0 + copy + contrastive errors (Innov. C) | 52.58% | Neutre — +0.10 dans le bruit |
 | B4 + copy + peel-stack + cross-voice n=10 | 54.86% | Structurels inchangés à 0% |
 | B4 + copy + peel-stack + cross-voice n=25 | 55.11% | Structurels inchangés à 0% |
+| B4 + copy + peel-stack + cross-voice n=50 | 55.17% | Structurels inchangés à 0% |
+| B4 + copy + peel-stack + cross-voice n=100 | 55.49% | Structurels inchangés à 0% |
+| B4 + copy + peel-stack + CV all + oversample×3 + tfr-start=15 | 55.40% | Structurels inchangés à 0% |
+| **B4 + copy + peel-stack + CV balanced 30/70** | **55.49%** | Structurels inchangés à 0% — meilleur CV jusqu'ici |
 
 Full greedy by-category for B4 + copy (selected):
 
@@ -315,6 +319,80 @@ Mais le **vrai finding** n'est pas le score — c'est le diagnostic de rang.
 3. K architectural complet (segmenter + mémoire d'assemblage + stop_head)
 
 **Valeur pour le papier :** résultat négatif à publier. Personne n'a documenté ce finding avec ce niveau de clarté (0/187 gold in top-k pour les catégories structurelles COGS). Cela invalide une classe entière d'approches (constraint-based decoding sur petits Transformers compositionnels) et justifie les approches training-side.
+
+### Innovation cross-voice — 6 configurations testées, toutes à 0% structurel
+
+Config de base : B4 + copy + peel-stack + génération automatique de paires actif↔passif depuis train (6519 paires uniques, via extraction de `pt_map`/`pp_map`). 60 epochs, seed 42.
+
+**Tableau des 6 runs :**
+
+| Config | Greedy | a2p | p2a | subj_to_obj_proper | prim_to_obj_proper | obj_pp_to_subj_pp |
+|---|---|---|---|---|---|---|
+| K+B4 baseline | 54.88% | 0% | 0% | 63.4% | 62.8% | 42.5% |
+| CV n=10 | 54.86% | 0% | 0% | 65.3% | 65.3% | — |
+| CV n=25 | 55.11% | 0% | 0% | 63.7% | 63.5% | — |
+| CV n=50 | 55.17% | 0% | 0% | 66.8% | 66.2% | 31.9% |
+| CV n=100 | 55.49% | 0% | 0% | 67.4% | 67.3% | 39.2% |
+| CV all × oversample 3 + tfr-start=15 (19 557 paires) | 55.40% | 0% | 0% | 72.2% | 73.5% | 25.6% |
+| CV balanced 30/70 (ratio fixe par batch) | 55.49% | **0%** | **0%** | 72.7% | 71.9% | 29.0% |
+
+**Toutes les configurations donnent exactement 0.00% sur `active_to_passive` et `passive_to_active`.** Pas 0.5%, pas 0.1%. Le gain global (+0.5 à +0.6) vient entièrement des catégories de proper names (~10 points), pas des transformations structurelles.
+
+**Diagnostic par verbe (script `diagnose_a2p_coverage.py`) :**
+
+```
+active_to_passive (1000 examples): 895/1000 testent UN seul verbe = "bless"
+  → bless apparaît en actif dans train, JAMAIS en passif
+  → notre générateur ne peut pas produire "X was blessed by Y" (pas de past participle)
+
+passive_to_active (1000 examples): 890/1000 testent UN seul verbe = "squeeze"
+  → squeeze apparaît en actif ET en passif dans train
+  → notre générateur le couvre, les paires p2a contiennent squeeze
+  → pourtant le modèle donne 0%
+```
+
+**Diagnostic des prédictions (script `diagnose_p2a_predictions.py`) :**
+
+Décodage greedy de 5 exemples de chaque catégorie sur le checkpoint CV_balanced_30 :
+
+| Catégorie | Gold verbe | Verbes prédits |
+|---|---|---|
+| active_to_passive | bless | **giggle**, **know**, **serve** |
+| passive_to_active | squeeze | **snooze**, **laugh**, **talk**, **giggle**, **observe** |
+
+La structure des LFs prédites est **parfaite** (rôles agent/thème/nmod/ccomp corrects, presup correctement placée). **Seule l'identité du verbe est fausse.** Le modèle substitue le verbe cible par un autre verbe de la "classe appropriée à la voix" (passive verbs pour a2p, active verbs pour p2a).
+
+**Interprétation : partition verbale rigide**
+
+Le modèle apprend une association contextuelle entre verbe et voix :
+- Verbes "actifs" = ceux apparus en actif dans train (130 verbes, incluant squeeze dans sa forme active présente)
+- Verbes "passifs" = ceux apparus en passif dans train (93 verbes, excluant bless)
+
+Quand il doit produire une LF passive, son prior sur un verbe comme `bless` est proche de zéro parce que bless n'est jamais le head d'une structure passive dans train. Les ~200 paires cross-voice pour bless ne suffisent pas à déplacer ce prior face aux ~24 000 exemples standards.
+
+**Le copy mechanism ne peut pas aider ici** : "blessed" (input) → "bless" (LF) requiert une **lemmatisation**, pas une copie token-à-token. Le pointer network copie des chaînes identiques ; il n'abstrait pas la morphologie.
+
+**Implication théorique :** le mur des 0% structurels n'est pas un problème d'exposition à la transformation (nos 19 557 paires n'aident pas) ni de coverage lexicale (squeeze est couvert), c'est un problème de **partition verbale**. Le modèle apprend implicitement "verbe ∈ classe_actifs OU classe_passifs" comme une feature binaire, plutôt que "tout verbe peut apparaître dans les deux voix". Le cross-voice produit des contre-exemples qui ne suffisent pas à réorganiser cette feature.
+
+### Innovation permute-verbs (A4 transposé à COGS) — EN COURS
+
+**Hypothèse :** si le mur est la partition verbale rigide, l'équivalent COGS de `SCAN A4_permute` devrait le briser. La permutation systématique de l'identité des verbes transitifs force le modèle à traiter `bless` et `squeeze` comme interchangeables, ce qui empêche la mémorisation de leur association à une voix particulière.
+
+**Implémentation :** au `__getitem__`, avec probabilité 0.5, tire une bijection aléatoire sur le pool de verbes transitifs (past + pp + lemma connus via `pt_map`/`pp_map` + fallback régulier -ed). Applique les 3 maps en cohérence : `past → autre past`, `pp → autre pp`, `lemma → autre lemma`.
+
+Config testée : B4 + copy + peel-stack + permute-verbs, seed 42, 60 epochs, 1M params.
+
+Résultat : **en cours**. Le critère de succès est `active_to_passive > 0%` et/ou `passive_to_active > 0%`. Si positif, c'est le même mécanisme que SCAN A4 et la thèse est validée : la permutation casse la partition verbe-contexte apprise et ré-ouvre l'espace d'hypothèses pour les transformations structurelles.
+
+### Innovations préparées mais non testées (prêtes à lancer)
+
+- `--cross-voice-morphology` : fallback -ed régulier pour ajouter bless (et autres actifs-only) au pp_map → couverture lexicale complète
+- `--cv-boost-bless-squeeze` : 50 paires ciblées par verbe (résultat préliminaire : 1 paire bless générée par le filtre strict — insuffisant, à combiner avec morphology)
+- `--curriculum-balanced --cv-ratio=0.3` : chaque batch 30/70 cv/orig (testé, 55.49%)
+- `--curriculum-passive-first --curriculum-switch-epoch=10` : phase 1 cv-only, phase 2 full
+- `--causal-curriculum --causal-ratio=0.33` : 3 tracks par batch, track A = exemples anonymisés (VERB/AGENT/THEME/RECIPIENT tokens). Vise à apprendre la structure causale sur des exemples dépourvus d'identité lexicale
+- `--selective-forgetting --forgetting-mode=gentle` : single-shot permute embeddings positionnels à E15-E16
+- `--d-model --n-layers --n-heads --ffn` : scaling libre jusqu'à ~30M params sur RTX 3070
 
 ### Autonomous loop (no human intervention)
 
