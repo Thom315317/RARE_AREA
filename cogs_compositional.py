@@ -1064,6 +1064,20 @@ def generate_cp_recursion_extension(train_pairs, max_aug=500):
     return deduped[:max_aug]
 
 
+# Verbs known to be missed by build_verb_form_maps (they appear in train only
+# as passives without by-phrase → no `.agent` in LF → invisible to the .agent-based
+# extractor). These are force-added using regular -ed morphology. Expand this list
+# if diagnose_a2p_coverage.py reveals other missed verbs.
+FORCED_REGULAR_VERBS_FOR_POOL = ["squeeze"]
+
+
+def _regular_past_form(lemma):
+    """Regular past/past-participle from lemma. e-final → +d, else +ed."""
+    if lemma.endswith("e"):
+        return lemma + "d"
+    return lemma + "ed"
+
+
 def build_verb_perm_pool(train_pairs, in_w2i, out_w2i, morphology_fallback=True):
     """Return a list of (past_in_id, pp_in_id, lemma_out_id) triples for every
     transitive verb that has both a past-tense and a past-participle form available
@@ -1074,11 +1088,24 @@ def build_verb_perm_pool(train_pairs, in_w2i, out_w2i, morphology_fallback=True)
     tgt (lemmas). Analog of SCAN's A4_permute on {walk, run, look, jump}.
     """
     pt_map, pp_map = build_verb_form_maps(train_pairs)
+    pt_map = dict(pt_map)
     pp_map = dict(pp_map)
     if morphology_fallback:
         for lemma, past in pt_map.items():
             if lemma not in pp_map and past.endswith("ed"):
                 pp_map[lemma] = past
+
+    # Force-add verbs that appear in train only as passives without by-phrase.
+    # For these, build_verb_form_maps leaves pt_map AND pp_map empty of them.
+    n_forced = 0
+    for lemma in FORCED_REGULAR_VERBS_FOR_POOL:
+        if lemma in pt_map and lemma in pp_map:
+            continue  # already covered by normal extraction
+        regular = _regular_past_form(lemma)
+        pt_map[lemma] = regular
+        pp_map[lemma] = regular
+        n_forced += 1
+
     pool = []
     missing_inv = 0
     missing_outv = 0
@@ -1102,7 +1129,8 @@ def build_verb_perm_pool(train_pairs, in_w2i, out_w2i, morphology_fallback=True)
              "skipped_missing_form": skipped_missing_form,
              "missing_input_vocab": missing_inv,
              "missing_output_vocab": missing_outv,
-             "pt_map_size": len(pt_map), "pp_map_size": len(pp_map)}
+             "pt_map_size": len(pt_map), "pp_map_size": len(pp_map),
+             "n_forced_regular_added": n_forced}
     return pool, stats
 
 
@@ -2605,7 +2633,11 @@ def train_one_run(variant: str, seed: int, args):
             train_pairs, in_w2i, out_w2i, morphology_fallback=True)
         print(f"VERB PERMUTATION ON: pool size={vpp_stats['pool_size']} verbs  "
               f"(pt_map={vpp_stats['pt_map_size']}, pp_map={vpp_stats['pp_map_size']}, "
+              f"forced={vpp_stats.get('n_forced_regular_added', 0)}, "
               f"skipped={vpp_stats['skipped_missing_form']}) prob={verb_perm_prob}")
+        if vpp_stats.get('n_forced_regular_added', 0) > 0:
+            print(f"  Forced-added to pool via regular morphology: "
+                  f"{FORCED_REGULAR_VERBS_FOR_POOL[:vpp_stats['n_forced_regular_added']]}")
         if vpp_stats["missing_input_vocab"] or vpp_stats["missing_output_vocab"]:
             print(f"  WARNING: {vpp_stats['missing_input_vocab']} verbs skipped for missing input ids, "
                   f"{vpp_stats['missing_output_vocab']} for missing output lemma ids")
