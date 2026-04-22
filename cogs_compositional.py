@@ -957,6 +957,113 @@ def generate_active_from_passive(inp, lf, pt_map):
     return new_inp, new_lf
 
 
+def generate_cp_recursion_extension(train_pairs, max_aug=500):
+    """Extend CP chains by 1 level. Wrap depth-N CP examples in an outer
+    '<NAME> <V_matrix> that …' clause to produce depth-(N+1) examples.
+
+    Builds a pool of (matrix_verb_lemma, past_tense) by scanning train examples
+    that contain `. ccomp `. Uses only proper names as new outer subjects (3 new
+    tokens prepended: `NAME V that`). All `x _ N` indices in the old LF shift
+    by +3. Two new predicates are prepended: `v.agent(x_1, NAME)` and
+    `v.ccomp(x_1, x_<old_matrix_pos+3>)`.
+
+    Returns a list of (inp, lf, "aug_cp_recursion") tuples, deduplicated.
+    """
+    cp_verbs = {}  # lemma -> past_tense_word
+    proper_subjects = set()
+    for inp, lf, _ in train_pairs:
+        if ". ccomp " not in lf:
+            continue
+        toks = inp.split()
+        lf_toks = lf.split()
+        matrix_lemma = None
+        matrix_pos = None
+        for j in range(len(lf_toks) - 6):
+            if lf_toks[j + 1] == "." and lf_toks[j + 2] == "ccomp" \
+                    and lf_toks[j + 3] == "(" and lf_toks[j + 4] == "x" \
+                    and lf_toks[j + 5] == "_" and lf_toks[j + 6].isdigit():
+                matrix_lemma = lf_toks[j]
+                matrix_pos = int(lf_toks[j + 6])
+                break
+        if matrix_lemma is None or matrix_pos is None or matrix_pos >= len(toks):
+            continue
+        cp_verbs.setdefault(matrix_lemma, toks[matrix_pos])
+        if toks and toks[0] and toks[0][0].isupper() and toks[0].isalpha() \
+                and toks[0] not in ("The", "A"):
+            proper_subjects.add(toks[0])
+
+    if not cp_verbs or not proper_subjects:
+        return []
+    cp_list = list(cp_verbs.items())
+    proper_list = list(proper_subjects)
+
+    aug = []
+    for inp, lf, _ in train_pairs:
+        if ". ccomp " not in lf:
+            continue
+        toks = inp.split()
+        if not toks or toks[-1] != ".":
+            continue
+        inner_tokens = toks[:-1]
+        new_name = random.choice(proper_list)
+        new_lemma, new_past = random.choice(cp_list)
+        if inner_tokens and inner_tokens[0] == new_name:
+            continue  # avoid "NAME V that NAME …"
+
+        # Lowercase leading determiner in inner clause (no longer at sentence start)
+        adj_inner = list(inner_tokens)
+        if adj_inner and adj_inner[0] in ("The", "A"):
+            adj_inner[0] = adj_inner[0].lower()
+        new_tokens = [new_name, new_past, "that"] + adj_inner + ["."]
+        new_inp = " ".join(new_tokens)
+
+        # Shift all `x _ N` in old LF by +3
+        lf_toks = lf.split()
+        shifted_toks = []
+        j = 0
+        while j < len(lf_toks):
+            if j + 2 < len(lf_toks) and lf_toks[j] == "x" and lf_toks[j + 1] == "_" \
+                    and lf_toks[j + 2].isdigit():
+                shifted_toks.extend(["x", "_", str(int(lf_toks[j + 2]) + 3)])
+                j += 3
+            else:
+                shifted_toks.append(lf_toks[j])
+                j += 1
+
+        # Locate OLD matrix event position for ccomp link
+        old_matrix_pos = None
+        for jj in range(len(lf_toks) - 6):
+            if lf_toks[jj + 1] == "." and lf_toks[jj + 2] == "ccomp" \
+                    and lf_toks[jj + 3] == "(" and lf_toks[jj + 4] == "x" \
+                    and lf_toks[jj + 5] == "_" and lf_toks[jj + 6].isdigit():
+                old_matrix_pos = int(lf_toks[jj + 6])
+                break
+        if old_matrix_pos is None:
+            continue
+        shifted_matrix_pos = old_matrix_pos + 3
+
+        prefix = (f"{new_lemma} . agent ( x _ 1 , {new_name} ) "
+                  f"AND {new_lemma} . ccomp ( x _ 1 , x _ {shifted_matrix_pos} )")
+        shifted_lf = " ".join(shifted_toks)
+        if " ; " in shifted_lf:
+            parts = shifted_lf.split(" ; ")
+            presups = parts[:-1]
+            body = parts[-1]
+            new_lf = " ; ".join(presups) + " ; " + prefix + " AND " + body
+        else:
+            new_lf = prefix + " AND " + shifted_lf
+        aug.append((new_inp, new_lf, "aug_cp_recursion"))
+
+    seen = set()
+    deduped = []
+    for item in aug:
+        if item[0] not in seen:
+            seen.add(item[0])
+            deduped.append(item)
+    random.shuffle(deduped)
+    return deduped[:max_aug]
+
+
 def build_verb_perm_pool(train_pairs, in_w2i, out_w2i, morphology_fallback=True):
     """Return a list of (past_in_id, pp_in_id, lemma_out_id) triples for every
     transitive verb that has both a past-tense and a past-participle form available
@@ -2296,6 +2403,25 @@ def train_one_run(variant: str, seed: int, args):
             total_k += len(pp_next)
         print(f"  Total peel-stack augmentation: {total_k}")
 
+    # CP recursion peel (same cascade logic as PP peel, but for clausal complements)
+    if getattr(args, "peel_cp", False):
+        cp_depth = getattr(args, "peel_cp_depth", 3)
+        print(f"PEEL-CP augmentation ON (depth={cp_depth}):")
+        cur_pairs = list(train_pairs)
+        total_cp = 0
+        for cp_level in range(cp_depth):
+            cp_next = generate_cp_recursion_extension(cur_pairs, max_aug=700)
+            if not cp_next:
+                break
+            print(f"  cp_level {cp_level+1}: +{len(cp_next)} examples")
+            for i, (a, l, _t) in enumerate(cp_next[:2] if cp_level == 0 else []):
+                print(f"    cp{i}: {a}")
+                print(f"          {l[:130]}...")
+            cur_pairs = cur_pairs + cp_next
+            train_pairs = train_pairs + cp_next
+            total_cp += len(cp_next)
+        print(f"  Total CP peel augmentation: {total_cp}")
+
     # Innovation: Cross-voice augmentation
     if getattr(args, "cross_voice", False):
         cv_n = getattr(args, "cross_voice_n", 0)
@@ -2346,6 +2472,29 @@ def train_one_run(variant: str, seed: int, args):
             print(f"  boost_s{i}: {a}")
             print(f"            {l[:110]}...")
         train_pairs = train_pairs + bless_passives + squeeze_actives
+
+    # Granular targeted boosts: --cv-boost-squeeze N and --cv-boost-bless N
+    n_squeeze = getattr(args, "cv_boost_squeeze", 0)
+    if n_squeeze > 0:
+        squeeze_pairs = generate_targeted_voice_pairs(
+            train_pairs, target_verb="squeeze", target_voice="active",
+            n=n_squeeze, seed=seed, morphology_fallback=True)
+        print(f"CV-BOOST-SQUEEZE ON: {len(squeeze_pairs)} active-voice pairs for squeeze")
+        for i, (a, l, _t) in enumerate(squeeze_pairs[:2]):
+            print(f"  sq{i}: {a}")
+            print(f"       {l[:120]}...")
+        train_pairs = train_pairs + squeeze_pairs
+
+    n_bless = getattr(args, "cv_boost_bless", 0)
+    if n_bless > 0:
+        bless_pairs = generate_targeted_voice_pairs(
+            train_pairs, target_verb="bless", target_voice="passive",
+            n=n_bless, seed=seed + 1, morphology_fallback=True)
+        print(f"CV-BOOST-BLESS ON: {len(bless_pairs)} passive-voice pairs for bless")
+        for i, (a, l, _t) in enumerate(bless_pairs[:2]):
+            print(f"  bl{i}: {a}")
+            print(f"       {l[:120]}...")
+        train_pairs = train_pairs + bless_pairs
 
     # Innovation: Causal curriculum — generate anonymized pool from train + cv pairs
     causal_curriculum = getattr(args, "causal_curriculum", False)
@@ -3019,6 +3168,10 @@ if __name__ == "__main__":
                    help="Innovation K: train-time decomposition of PP-containing examples into sub-problems")
     p.add_argument("--peel-stack-depth", type=int, default=3,
                    help="Number of cascade iterations for peel-stack (each adds +1 PP depth). Default 3 → depths 3,4,5.")
+    p.add_argument("--peel-cp", action="store_true",
+                   help="CP recursion peel: wrap depth-N ccomp examples in an extra 'NAME V that …' layer. Cascade count controlled by --peel-cp-depth.")
+    p.add_argument("--peel-cp-depth", type=int, default=3,
+                   help="Number of cascade iterations for --peel-cp (default 3 → clause depths up to 3+original).")
     p.add_argument("--contrastive-errors", action="store_true",
                    help="Innovation C: per-token margin loss pushing gold above top-1 competitor (lambda=0.2, margin=1.0)")
     p.add_argument("--constrained-beam", action="store_true",
@@ -3041,6 +3194,10 @@ if __name__ == "__main__":
                    help="Add N targeted cross-voice pairs: bless in passive + squeeze in active. N controlled by --cv-boost-n.")
     p.add_argument("--cv-boost-n", type=int, default=50,
                    help="Number of targeted examples per boost verb (default 50)")
+    p.add_argument("--cv-boost-squeeze", type=int, default=0,
+                   help="Add N targeted cross-voice pairs: squeeze in ACTIVE (derived from train passives). 0 = disabled.")
+    p.add_argument("--cv-boost-bless", type=int, default=0,
+                   help="Add N targeted cross-voice pairs: bless in PASSIVE (derived from train actives, needs morphology fallback). 0 = disabled.")
     p.add_argument("--causal-curriculum", action="store_true",
                    help="3-track causal curriculum: every batch contains anonymized (structure) + orig + cross-voice examples. Requires --cross-voice.")
     p.add_argument("--causal-ratio", type=float, default=0.33,

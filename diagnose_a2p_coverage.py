@@ -115,3 +115,59 @@ print(f"\n=== Summary ===")
 print(f"train_passive_verbs (usable for a2p via cross-voice): {len(train_passive_verbs)}")
 print(f"train_active_verbs (usable for p2a via cross-voice): {len(train_active_verbs)}")
 print(f"Intersection (both voices seen): {len(train_passive_verbs & train_active_verbs)}")
+
+# --- Permute-verbs pool coverage ---
+# A verb enters the permute-verbs pool if it has BOTH a past_tense form (from
+# train actives) AND a past_participle form (from train passives, or regular
+# -ed fallback). Compute this with the same logic as build_verb_perm_pool.
+print(f"\n=== Permute-verbs pool coverage ===")
+
+# Build pt_map and pp_map (with morphology fallback, as used in the flag)
+pt_map, pp_map = {}, {}
+for inp, lf, _ in train:
+    verb = extract_verb_from_lf(lf)
+    if verb is None:
+        continue
+    toks = inp.split()
+    # Find the verb position in the input via LF
+    lf_toks = lf.split()
+    verb_pos = None
+    for j in range(len(lf_toks) - 6):
+        if lf_toks[j + 1] == "." and lf_toks[j + 2] == "agent" \
+                and lf_toks[j + 3] == "(" and lf_toks[j + 4] == "x" \
+                and lf_toks[j + 5] == "_" and lf_toks[j + 6].isdigit():
+            verb_pos = int(lf_toks[j + 6])
+            break
+    if verb_pos is None or verb_pos >= len(toks):
+        continue
+    verb_word = toks[verb_pos]
+    if "was" in toks and "by" in toks:
+        pp_map.setdefault(verb, verb_word)
+    else:
+        pt_map.setdefault(verb, verb_word)
+
+# Morphological fallback: verbs in pt_map but not pp_map, assume regular
+pp_map_with_fallback = dict(pp_map)
+for lemma, past in pt_map.items():
+    if lemma not in pp_map_with_fallback and past.endswith("ed"):
+        pp_map_with_fallback[lemma] = past
+
+pool_verbs = set(pt_map.keys()) & set(pp_map_with_fallback.keys())
+print(f"Pool (pt_map ∩ pp_map with morphology fallback): {len(pool_verbs)} verbs")
+
+for label, verbs_counter in [("active_to_passive gen", gen_a2p_verbs),
+                              ("passive_to_active gen", gen_p2a_verbs)]:
+    unique_verbs = set(verbs_counter.keys())
+    in_pool = unique_verbs & pool_verbs
+    out_pool = unique_verbs - pool_verbs
+    examples_in = sum(verbs_counter[v] for v in in_pool)
+    examples_out = sum(verbs_counter[v] for v in out_pool)
+    total = sum(verbs_counter.values())
+    print(f"\n  {label}:")
+    print(f"    unique verbs in pool: {len(in_pool)}/{len(unique_verbs)}")
+    print(f"    examples covered by pool: {examples_in}/{total} "
+          f"({100*examples_in/max(total,1):.1f}%)")
+    if out_pool:
+        print(f"    verbs OUT of pool: {sorted(out_pool)}")
+        print(f"    (example-level coverage loss: {examples_out}/{total} = "
+              f"{100*examples_out/max(total,1):.1f}%)")
