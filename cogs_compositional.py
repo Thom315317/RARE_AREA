@@ -86,6 +86,18 @@ def build_vocabs(pairs):
     return in_w2i, out_w2i
 
 
+def build_unified_vocab(pairs):
+    """Merge input and output tokens into a single vocabulary.
+    Needed for bidirectional training — same embedding space for both directions."""
+    w2i = {PAD: 0, BOS: 1, EOS: 2}
+    for inp, lf, _ in pairs:
+        for t in inp.split():
+            if t not in w2i: w2i[t] = len(w2i)
+        for t in lf.split():
+            if t not in w2i: w2i[t] = len(w2i)
+    return w2i
+
+
 COGS_DETERMINERS = {"A", "The", "An", "Every", "No", "Some"}
 
 def detect_proper_names(train_pairs, in_w2i, out_w2i):
@@ -690,6 +702,299 @@ def generate_subj_pp_augmentations(train_pairs):
     return aug
 
 
+# ══════════════════════════════════════════════════════════════
+# Cross-voice augmentation (Innovation: --cross-voice)
+# ══════════════════════════════════════════════════════════════
+def _classify_np(np_toks):
+    """Return (type, noun_idx_in_np, is_definite). type in {proper, common, unknown}."""
+    DETS_LOW = {"a", "the"}
+    DETS_CAP = {"A", "The"}
+    if len(np_toks) == 1:
+        t = np_toks[0]
+        if t and t[0].isupper() and t not in DETS_CAP:
+            return ("proper", 0, False)
+        return ("unknown", -1, False)
+    if len(np_toks) == 2:
+        d, n = np_toks[0], np_toks[1]
+        if d in DETS_LOW or d in DETS_CAP:
+            is_def = d.lower() == "the"
+            # The noun must be lowercase common noun
+            if n and n[0].islower() and n.isalpha():
+                return ("common", 1, is_def)
+    return ("unknown", -1, False)
+
+
+def build_verb_form_maps(train_pairs):
+    """Extract verb_lemma → past_tense (from actives) and verb_lemma → past_participle
+    (from passives) by scanning train. Returns (pt_map, pp_map)."""
+    pt_map, pp_map = {}, {}
+    for inp, lf, _ in train_pairs:
+        toks = inp.split()
+        lf_toks = lf.split()
+        # Find verb lemma + event position from LF (head of .agent)
+        verb_lemma, verb_pos = None, None
+        for j in range(len(lf_toks) - 6):
+            if lf_toks[j + 1] == "." and lf_toks[j + 2] == "agent" \
+                    and lf_toks[j + 3] == "(" and lf_toks[j + 4] == "x" \
+                    and lf_toks[j + 5] == "_" and lf_toks[j + 6].isdigit():
+                verb_lemma = lf_toks[j]
+                verb_pos = int(lf_toks[j + 6])
+                break
+        if verb_lemma is None or verb_pos is None or verb_pos >= len(toks):
+            continue
+        verb_word = toks[verb_pos]
+        if "was" in toks and "by" in toks:
+            pp_map.setdefault(verb_lemma, verb_word)
+        else:
+            pt_map.setdefault(verb_lemma, verb_word)
+    return pt_map, pp_map
+
+
+def _simple_active_transitive(inp, lf):
+    """Return (verb_lemma, verb_pos, subj_toks, obj_toks) for simple active transitive,
+    or None. Rejects examples with nmod/ccomp/recipient."""
+    toks = inp.split()
+    if toks[-1] != ".":
+        return None
+    if "was" in toks or "by" in toks:
+        return None
+    if ". nmod" in lf or ". ccomp" in lf or ". xcomp" in lf \
+            or ". recipient" in lf:
+        return None
+    # Find verb lemma + pos
+    lf_toks = lf.split()
+    verb_lemma, verb_pos = None, None
+    for j in range(len(lf_toks) - 6):
+        if lf_toks[j + 1] == "." and lf_toks[j + 2] == "agent" \
+                and lf_toks[j + 3] == "(" and lf_toks[j + 4] == "x" \
+                and lf_toks[j + 5] == "_" and lf_toks[j + 6].isdigit():
+            verb_lemma = lf_toks[j]
+            verb_pos = int(lf_toks[j + 6])
+            break
+    if verb_pos is None or verb_pos >= len(toks) - 1:
+        return None
+    # Must have both .agent and .theme (transitive)
+    if ". theme (" not in lf:
+        return None
+    subj_toks = toks[0:verb_pos]
+    obj_toks = toks[verb_pos + 1:-1]  # exclude final "."
+    if not subj_toks or not obj_toks:
+        return None
+    return verb_lemma, verb_pos, subj_toks, obj_toks
+
+
+def _simple_passive(inp, lf):
+    """Return (verb_lemma, subj_toks_passive, agent_toks_after_by) for simple passive,
+    or None. Rejects recipients/nmod/ccomp."""
+    toks = inp.split()
+    if toks[-1] != ".":
+        return None
+    if "was" not in toks or "by" not in toks:
+        return None
+    if ". nmod" in lf or ". ccomp" in lf or ". xcomp" in lf \
+            or ". recipient" in lf:
+        return None
+    try:
+        was_idx = toks.index("was")
+        by_idx = toks.index("by")
+    except ValueError:
+        return None
+    if by_idx <= was_idx + 1:
+        return None
+    # Verb lemma from LF (head of .agent)
+    lf_toks = lf.split()
+    verb_lemma = None
+    for j in range(len(lf_toks) - 2):
+        if lf_toks[j + 1] == "." and lf_toks[j + 2] == "agent":
+            verb_lemma = lf_toks[j]
+            break
+    if verb_lemma is None:
+        return None
+    subj_toks = toks[0:was_idx]              # passive subject (theme)
+    agent_toks = toks[by_idx + 1:-1]         # by-phrase NP (agent)
+    if not subj_toks or not agent_toks:
+        return None
+    return verb_lemma, subj_toks, agent_toks
+
+
+def _build_lf_for_transitive(verb_lemma, verb_pos, subj_toks, subj_noun_pos,
+                              obj_toks, obj_noun_pos, active=True):
+    """Build an LF for a simple transitive sentence.
+
+    Order for active: [subj_noun if common indef] AND v.agent AND v.theme [AND obj_noun if common indef]
+    Order for passive: [theme_noun if common indef] AND v.theme AND v.agent [AND agent_noun if common indef]
+    Definite NPs become `* noun ( x _ N )` presuppositions prepended with `;`.
+    """
+    subj_type, subj_noun_idx, subj_def = _classify_np(subj_toks)
+    obj_type, obj_noun_idx, obj_def = _classify_np(obj_toks)
+    if subj_type == "unknown" or obj_type == "unknown":
+        return None
+
+    subj_term = (subj_toks[subj_noun_idx] if subj_type == "proper"
+                 else f"x _ {subj_noun_pos}")
+    obj_term = (obj_toks[obj_noun_idx] if obj_type == "proper"
+                else f"x _ {obj_noun_pos}")
+
+    presup, body = [], []
+    def _pred(noun_low, pos, is_def):
+        if is_def:
+            presup.append(f"* {noun_low} ( x _ {pos} )")
+        else:
+            body.append(f"{noun_low} ( x _ {pos} )")
+
+    # ORDER depends on active vs passive
+    if active:
+        # subj_noun (if common) — v.agent — v.theme — obj_noun (if common)
+        if subj_type == "common":
+            _pred(subj_toks[subj_noun_idx].lower(), subj_noun_pos, subj_def)
+        body.append(f"{verb_lemma} . agent ( x _ {verb_pos} , {subj_term} )")
+        body.append(f"{verb_lemma} . theme ( x _ {verb_pos} , {obj_term} )")
+        if obj_type == "common":
+            _pred(obj_toks[obj_noun_idx].lower(), obj_noun_pos, obj_def)
+    else:
+        # passive: theme_noun (obj here acts as theme=subject of passive) — v.theme — v.agent — agent_noun
+        if obj_type == "common":
+            _pred(obj_toks[obj_noun_idx].lower(), obj_noun_pos, obj_def)
+        body.append(f"{verb_lemma} . theme ( x _ {verb_pos} , {obj_term} )")
+        body.append(f"{verb_lemma} . agent ( x _ {verb_pos} , {subj_term} )")
+        if subj_type == "common":
+            _pred(subj_toks[subj_noun_idx].lower(), subj_noun_pos, subj_def)
+
+    body_str = " AND ".join(body)
+    if presup:
+        return " ; ".join(presup) + " ; " + body_str
+    return body_str
+
+
+def _capitalize_first(toks):
+    """Capitalize first word of NP if it's a lowercase determiner (for sentence start)."""
+    out = list(toks)
+    if out and out[0] in ("a", "the"):
+        out[0] = out[0].capitalize()
+    return out
+
+
+def _lowercase_det(toks):
+    """Lowercase a leading capitalized determiner when NP moves mid-sentence."""
+    out = list(toks)
+    if out and out[0] in ("A", "The"):
+        out[0] = out[0].lower()
+    return out
+
+
+def generate_passive_from_active(inp, lf, pp_map):
+    """Active → passive conversion. Returns (new_inp, new_lf) or None."""
+    res = _simple_active_transitive(inp, lf)
+    if res is None:
+        return None
+    verb_lemma, _, subj_toks, obj_toks = res
+    if verb_lemma not in pp_map:
+        return None
+    pp_word = pp_map[verb_lemma]
+
+    # Build passive: obj (as passive subject) + "was <pp>" + "by" + subj + "."
+    new_obj_toks = _capitalize_first(obj_toks)   # used as passive subject at sentence start
+    new_subj_toks = _lowercase_det(subj_toks)    # used after "by"
+    passive_tokens = new_obj_toks + ["was", pp_word, "by"] + new_subj_toks + ["."]
+    new_inp = " ".join(passive_tokens)
+
+    # Compute new positions
+    obj_len = len(new_obj_toks)
+    new_theme_noun_pos = 0 + 1  # for "<det> <noun>": noun at idx 1; for proper: idx 0
+    obj_type, obj_noun_idx, _ = _classify_np(new_obj_toks)
+    if obj_type == "unknown":
+        return None
+    new_theme_noun_pos = obj_noun_idx  # 0 or 1
+    new_verb_pos = obj_len + 1          # after "was"
+    new_agent_noun_pos = obj_len + 3    # position after "was pp by", then + noun_idx
+    subj_type, subj_noun_idx, _ = _classify_np(new_subj_toks)
+    if subj_type == "unknown":
+        return None
+    new_agent_noun_pos = obj_len + 3 + subj_noun_idx
+
+    new_lf = _build_lf_for_transitive(
+        verb_lemma, new_verb_pos,
+        new_subj_toks, new_agent_noun_pos,
+        new_obj_toks, new_theme_noun_pos,
+        active=False)
+    if new_lf is None:
+        return None
+    return new_inp, new_lf
+
+
+def generate_active_from_passive(inp, lf, pt_map):
+    """Passive → active conversion. Returns (new_inp, new_lf) or None."""
+    res = _simple_passive(inp, lf)
+    if res is None:
+        return None
+    verb_lemma, passive_subj_toks, passive_agent_toks = res
+    if verb_lemma not in pt_map:
+        return None
+    past_word = pt_map[verb_lemma]
+
+    # Active: agent-NP (passive's by-phrase) + past + theme-NP (passive's subject) + "."
+    new_subj_toks = _capitalize_first(passive_agent_toks)
+    new_obj_toks = _lowercase_det(passive_subj_toks)
+    active_tokens = new_subj_toks + [past_word] + new_obj_toks + ["."]
+    new_inp = " ".join(active_tokens)
+
+    # Positions
+    subj_type, subj_noun_idx, _ = _classify_np(new_subj_toks)
+    obj_type, obj_noun_idx, _ = _classify_np(new_obj_toks)
+    if subj_type == "unknown" or obj_type == "unknown":
+        return None
+    new_subj_noun_pos = subj_noun_idx
+    new_verb_pos = len(new_subj_toks)
+    new_obj_noun_pos = len(new_subj_toks) + 1 + obj_noun_idx
+
+    new_lf = _build_lf_for_transitive(
+        verb_lemma, new_verb_pos,
+        new_subj_toks, new_subj_noun_pos,
+        new_obj_toks, new_obj_noun_pos,
+        active=True)
+    if new_lf is None:
+        return None
+    return new_inp, new_lf
+
+
+def generate_cross_voice_pairs(train_pairs, n_pairs=None, seed=42):
+    """Generate cross-voice (active↔passive) augmentation pairs from train.
+
+    Only handles simple transitive examples (no nmod / ccomp / recipient).
+    Returns a list of (input, lf, source_tag) suitable for appending to train.
+    """
+    rng = random.Random(seed)
+    pt_map, pp_map = build_verb_form_maps(train_pairs)
+    # Candidate pool: all (inp, lf) in train, try both directions
+    candidates = []
+    n_ok_a2p, n_ok_p2a, n_skip = 0, 0, 0
+    for inp, lf, _ in train_pairs:
+        res_a2p = generate_passive_from_active(inp, lf, pp_map)
+        if res_a2p is not None:
+            candidates.append((res_a2p[0], res_a2p[1], "cross_voice_a2p"))
+            n_ok_a2p += 1
+            continue
+        res_p2a = generate_active_from_passive(inp, lf, pt_map)
+        if res_p2a is not None:
+            candidates.append((res_p2a[0], res_p2a[1], "cross_voice_p2a"))
+            n_ok_p2a += 1
+            continue
+        n_skip += 1
+    # Dedupe by input string
+    seen = set()
+    unique = []
+    for c in candidates:
+        if c[0] not in seen:
+            seen.add(c[0])
+            unique.append(c)
+    rng.shuffle(unique)
+    if n_pairs is not None and n_pairs > 0 and len(unique) > n_pairs:
+        unique = unique[:n_pairs]
+    return unique, {"n_a2p_generated": n_ok_a2p, "n_p2a_generated": n_ok_p2a,
+                    "n_skipped": n_skip, "pp_map_size": len(pp_map),
+                    "pt_map_size": len(pt_map), "n_unique_final": len(unique)}
+
+
 def _is_verb_cluster(tokens, train_pairs):
     """Heuristic: a cluster is verbs if it's all lowercase AND >50% of its
     members appear right after 'to' (infinitive position).
@@ -735,20 +1040,28 @@ def build_extended_perm_classes(train_pairs, in_w2i, out_w2i, exclude_verbs=Fals
 class COGSDataset(Dataset):
     """COGS (input, logical_form, category). Supports multi-class permutation:
     perm_classes is a list of classes, each class is a list of (in_id, out_id).
-    Each __getitem__ draws an independent random permutation per class."""
+
+    If bidirectional=True, with prob 0.5 per __getitem__ the (src, tgt) pair
+    is reversed: LF becomes the source (stripped of BOS/EOS), phrase becomes
+    the target (wrapped with BOS/EOS). Requires a unified vocabulary."""
 
     def __init__(self, pairs, in_w2i, out_w2i, max_out=MAX_OUT,
-                 perm_classes=None):
+                 perm_classes=None, bidirectional=False):
         self.data = []
         self.cats = []
+        bos = out_w2i[BOS]
+        eos = out_w2i[EOS]
         for inp, lf, cat in pairs:
             src = [in_w2i.get(t, 0) for t in inp.split()]
-            tgt = [out_w2i[BOS]] + [out_w2i.get(t, 0) for t in lf.split()] + [out_w2i[EOS]]
+            tgt = [bos] + [out_w2i.get(t, 0) for t in lf.split()] + [eos]
             tgt = tgt[:max_out]
             self.data.append((src, tgt, len(inp.split())))
             self.cats.append(cat)
         self.perm_classes = [c for c in (perm_classes or []) if len(c) >= 2]
         self.permute = len(self.perm_classes) > 0
+        self.bidirectional = bidirectional
+        self.bos = bos
+        self.eos = eos
 
     def __len__(self): return len(self.data)
 
@@ -766,6 +1079,13 @@ class COGSDataset(Dataset):
                     m_out[cls[k][1]] = cls[order[k]][1]
             src = [m_in.get(t, t)  for t in src]
             tgt = [m_out.get(t, t) for t in tgt]
+        # Bidirectional swap: 50% chance
+        if self.bidirectional and random.random() < 0.5:
+            # new_src = old tgt without BOS/EOS
+            new_src = [t for t in tgt if t != self.bos and t != self.eos]
+            # new_tgt = [BOS] + old_src + [EOS]
+            new_tgt = [self.bos] + src + [self.eos]
+            return (new_src, new_tgt, len(new_src), cat)
         return (src, tgt, n, cat)
 
 
@@ -1175,6 +1495,281 @@ def evaluate_tf(model, loader, device):
             "n": n, "by_cat": by_cat_pct}
 
 
+def extract_train_constraints(train_pairs):
+    """Extract soft constraints from the train set to re-rank beams at inference.
+
+    Returns a dict with:
+      always_agent : set of nouns only seen as agent (never theme)
+      always_theme : set of nouns only seen as theme (never agent)
+      proper_names : set of capitalized tokens (excluding determiners)
+      nmod_heads   : set of tokens preceded by .nmod (i.e., nouns)
+      ccomp_heads  : set of tokens preceded by .ccomp (i.e., verbs)
+      known_verbs  : set of verb stems seen in LFs (prefix before .agent/.theme/.recipient)
+    """
+    from collections import defaultdict
+    agent_nouns = set()
+    theme_nouns = set()
+    nmod_heads = set()
+    ccomp_heads = set()
+    known_verbs = set()
+    proper_names = set()
+    DETS = {"The", "A", "the", "a"}
+
+    for inp, lf, _ in train_pairs:
+        # Proper names from the input
+        for tok in inp.split():
+            if tok and tok[0].isupper() and tok not in DETS and tok.isalpha():
+                proper_names.add(tok)
+
+        # Scan LF tokens. LFs use tokens like "eat . agent", "cake", "x _ 1"
+        # We iterate over substrings delimited by spaces and look for the patterns
+        # "<HEAD> . agent ( ... , <VAR_OR_NOUN> )" etc.
+        toks = lf.split()
+        # Build a simple linear scan: whenever we see "<head> . <rel>", note it
+        i = 0
+        while i < len(toks) - 2:
+            if toks[i + 1] == "." and toks[i + 2] in ("agent", "theme", "recipient",
+                                                       "nmod", "ccomp", "xcomp"):
+                head = toks[i]
+                rel = toks[i + 2]
+                if rel in ("agent", "theme", "recipient"):
+                    known_verbs.add(head)
+                if rel == "nmod":
+                    nmod_heads.add(head)
+                elif rel == "ccomp":
+                    ccomp_heads.add(head)
+                i += 3
+            else:
+                i += 1
+
+        # Crude animacy detection: collect (variable, noun-used) pairs per example
+        # For COGS, each "noun ( x _ N )" or "* noun ( x _ N )" declares a noun.
+        # And "verb . agent ( x_i , x_j )" assigns the verb's agent to x_j.
+        # Simple heuristic: find all noun predicates, then verb.role predicates,
+        # and note which nouns end up as agent vs theme.
+        noun_of_var = {}
+        j = 0
+        while j < len(toks):
+            # pattern: [noun] ( x _ N )
+            if j + 4 < len(toks) and toks[j + 1] == "(" and toks[j + 2] == "x" \
+                    and toks[j + 3] == "_" and toks[j + 4].isdigit():
+                noun = toks[j]
+                if noun not in ("*", "AND", ";"):
+                    var = f"{toks[j+2]}_{toks[j+4]}"
+                    noun_of_var[var] = noun
+                j += 6
+            else:
+                j += 1
+        # Now find role assignments
+        j = 0
+        while j < len(toks) - 6:
+            if toks[j + 1] == "." and toks[j + 2] in ("agent", "theme") \
+                    and toks[j + 3] == "(":
+                rel = toks[j + 2]
+                # The second argument is at toks[j+7..] — pattern: ( x _ i , x _ j )
+                # Find comma, then take the variable after it
+                k = j + 4
+                # Skip until comma
+                while k < len(toks) and toks[k] != ",":
+                    k += 1
+                if k + 3 < len(toks) and toks[k + 1] == "x" and toks[k + 2] == "_":
+                    var = f"x_{toks[k+3]}"
+                    if var in noun_of_var:
+                        noun = noun_of_var[var]
+                        if rel == "agent":
+                            agent_nouns.add(noun)
+                        elif rel == "theme":
+                            theme_nouns.add(noun)
+                j += 4
+            else:
+                j += 1
+
+    return {
+        "always_agent": agent_nouns - theme_nouns,
+        "always_theme": theme_nouns - agent_nouns,
+        "flexible":     agent_nouns & theme_nouns,
+        "proper_names": proper_names,
+        "nmod_heads":   nmod_heads,
+        "ccomp_heads":  ccomp_heads,
+        "known_verbs":  known_verbs,
+    }
+
+
+def score_hypothesis(lf_tokens, input_tokens, constraints, log_prob):
+    """Score an LF hypothesis against train-set constraints.
+
+    Returns (adjusted_score, violations_list). Higher score = better.
+    """
+    score = float(log_prob)
+    violations = []
+    input_words = list(input_tokens)
+    input_lower = [w.lower() for w in input_words]
+
+    toks = lf_tokens
+    # Build variable -> noun map for this LF
+    noun_of_var = {}
+    j = 0
+    while j < len(toks):
+        if j + 4 < len(toks) and toks[j + 1] == "(" and toks[j + 2] == "x" \
+                and toks[j + 3] == "_" and toks[j + 4].isdigit():
+            noun = toks[j]
+            if noun not in ("*", "AND", ";"):
+                var = f"x_{toks[j+4]}"
+                noun_of_var[var] = noun
+            j += 6
+        else:
+            j += 1
+
+    # Check each head.rel(args) predicate
+    j = 0
+    while j < len(toks) - 3:
+        if toks[j + 1] == "." and toks[j + 2] in ("agent", "theme", "recipient",
+                                                   "nmod", "ccomp", "xcomp"):
+            head = toks[j]
+            rel = toks[j + 2]
+
+            # Constraint: verb head must be a known verb lemma from train
+            # (skipping direct input match — COGS LFs lemmatize verbs, e.g. "eat" vs "eaten")
+            if rel in ("agent", "theme", "recipient"):
+                if head not in constraints["known_verbs"]:
+                    score -= 5.0
+                    violations.append(f"UNK_VERB: '{head}' not in known_verbs")
+
+            # Constraint: nmod should attach to a noun, not a verb
+            if rel == "nmod":
+                if head in constraints["ccomp_heads"] and head not in constraints["nmod_heads"]:
+                    score -= 3.0
+                    violations.append(f"ATTACH: nmod on verb '{head}'")
+
+            # Constraint: ccomp should attach to a verb, not a noun
+            if rel == "ccomp":
+                if head in constraints["nmod_heads"] and head not in constraints["ccomp_heads"]:
+                    score -= 3.0
+                    violations.append(f"ATTACH: ccomp on noun '{head}'")
+
+            # Constraint: animacy on agent/theme
+            if rel in ("agent", "theme"):
+                # Walk forward to find "( _ , x _ N )"
+                k = j + 4
+                while k < len(toks) and toks[k] != ",":
+                    k += 1
+                if k + 3 < len(toks) and toks[k + 1] == "x" and toks[k + 2] == "_":
+                    var = f"x_{toks[k+3]}"
+                    filler_noun = noun_of_var.get(var, None)
+                    if filler_noun is None:
+                        # Maybe a proper name directly
+                        if k + 1 < len(toks) and toks[k + 1] and toks[k + 1][0].isupper():
+                            filler_noun = toks[k + 1]
+                    if filler_noun is not None:
+                        if rel == "agent" and filler_noun in constraints["always_theme"]:
+                            score -= 5.0
+                            violations.append(f"ANIMACY: '{filler_noun}' as agent")
+                        if rel == "theme" and filler_noun in constraints["proper_names"] \
+                                and filler_noun in constraints["always_agent"]:
+                            score -= 5.0
+                            violations.append(f"ANIMACY: proper '{filler_noun}' as theme")
+
+            # Constraint: passive voice — if input has "was" + "by X", agent should be X
+            if rel == "agent" and "was" in input_words and "by" in input_words:
+                try:
+                    by_idx = input_words.index("by")
+                    if by_idx + 1 < len(input_words):
+                        expected = input_words[by_idx + 1]
+                        k = j + 4
+                        while k < len(toks) and toks[k] != ",":
+                            k += 1
+                        # The agent filler should be expected
+                        ag_filler = None
+                        if k + 3 < len(toks) and toks[k + 1] == "x" and toks[k + 2] == "_":
+                            var = f"x_{toks[k+3]}"
+                            ag_filler = noun_of_var.get(var, None)
+                        elif k + 1 < len(toks):
+                            ag_filler = toks[k + 1]
+                        if ag_filler is not None and ag_filler.lower() != expected.lower():
+                            score -= 3.0
+                            violations.append(f"PASSIVE: agent should be '{expected}', got '{ag_filler}'")
+                except ValueError:
+                    pass
+
+            j += 3
+        else:
+            j += 1
+
+    return score, violations
+
+
+@torch.no_grad()
+def beam_decode(model, src, src_mask, out_w2i, beam_size=10, max_len=MAX_DECODE):
+    """Batched beam search. For each example in the batch of B inputs, expands a
+    beam of size K in parallel. Returns list[B] of list[K] of (tokens, log_prob).
+
+    Implementation: we replicate each encoder output K times so all K beams of a
+    single example are processed in one forward pass.
+    """
+    B = src.size(0)
+    K = beam_size
+    device = src.device
+    bos, eos = out_w2i[BOS], out_w2i[EOS]
+    enc = model.encode(src, src_mask)
+    mem_kpm = ~src_mask
+    uses_tags = isinstance(model, TransformerSeq2SeqCopyTags)
+    uses_copy = isinstance(model, TransformerSeq2SeqWithCopy)
+
+    out_beams = []
+    for b in range(B):
+        # Replicate encoder output K times for parallel beam expansion
+        enc_b = enc[b:b+1].expand(K, -1, -1).contiguous()
+        mem_kpm_b = mem_kpm[b:b+1].expand(K, -1).contiguous()
+        src_b = src[b:b+1].expand(K, -1).contiguous()
+
+        # Initialize beams: all K slots start with BOS.
+        # At step 0, only the first slot is active so we don't get K identical beams.
+        tokens = torch.full((K, 1), bos, device=device, dtype=torch.long)
+        log_probs = torch.full((K,), -1e9, device=device, dtype=torch.float32)
+        log_probs[0] = 0.0
+        done = torch.zeros(K, dtype=torch.bool, device=device)
+
+        for step in range(max_len):
+            if uses_tags:
+                logits, _ = model.decode_with_copy_tags(src_b, enc_b, mem_kpm_b,
+                                                       tokens, roles_gt=None)
+            elif uses_copy:
+                logits = model.decode_with_copy(src_b, enc_b, mem_kpm_b, tokens)
+            else:
+                logits = model.decode(enc_b, mem_kpm_b, tokens)
+            # Next-token log-probs: (K, V)
+            if uses_copy:
+                step_lp = logits[:, -1, :]
+            else:
+                step_lp = F.log_softmax(logits[:, -1, :], dim=-1)
+            V = step_lp.size(-1)
+            # For finished beams, lock in with EOS log_prob=0 (keep their tokens)
+            # We achieve this by: expanded_lp = log_probs[:, None] + step_lp (for active)
+            # For done beams, force them to "repeat EOS" with 0 marginal contribution.
+            expanded = log_probs.unsqueeze(1) + step_lp   # (K, V)
+            if done.any():
+                # For done rows, set all candidates to -inf except PAD/EOS=itself with 0
+                expanded[done] = -1e9
+                expanded[done, eos] = log_probs[done]     # keep EOS as non-scoring continuation
+            # Top-K across the flattened K*V space
+            flat = expanded.reshape(-1)
+            top_lp, top_idx = flat.topk(K)
+            new_beam_src = top_idx // V
+            new_token = top_idx % V
+            tokens = torch.cat([tokens[new_beam_src], new_token.unsqueeze(1)], dim=1)
+            log_probs = top_lp
+            done = done[new_beam_src] | (new_token == eos)
+            if done.all():
+                break
+
+        # Strip BOS (first column), return as list of (tokens_tensor, log_prob)
+        finals = []
+        for k in range(K):
+            finals.append((tokens[k, 1:].clone(), float(log_probs[k].item())))
+        out_beams.append(finals)
+    return out_beams
+
+
 @torch.no_grad()
 def greedy_decode(model, src, src_mask, out_w2i, max_len=MAX_DECODE):
     B = src.size(0)
@@ -1202,13 +1797,100 @@ def greedy_decode(model, src, src_mask, out_w2i, max_len=MAX_DECODE):
 
 
 @torch.no_grad()
-def evaluate(model, loader, out_w2i, device, max_len=MAX_DECODE):
+def evaluate(model, loader, out_w2i, device, max_len=MAX_DECODE,
+             constraints=None, beam_size=10, in_i2w=None, out_i2w=None,
+             diag_cats=None, max_examples=0, progress_every=500):
+    """Greedy eval (constraints=None) or constrained-beam eval (constraints=dict).
+
+    If constraints is provided, runs beam_decode(k=beam_size), scores each hypothesis
+    against constraints, and picks the highest adjusted score.
+
+    diag_cats (optional): set of category names for which to log beam ranks of gold.
+    max_examples (optional, >0): stop after this many examples (for quick tests).
+    progress_every: print a progress line every N examples (only when constraints used).
+    """
+    import time as _time
     model.eval()
     n, exact, tok_c, tok_t = 0, 0, 0, 0
     by_cat: Dict[str, Tuple[int, int]] = {}
+    viol_counts = {}
+    beam_rank_log = []  # (cat, gold_rank_or_minus_one, n_beams)
+    t_start = _time.time()
     for src, src_mask, tgt, _, cats in loader:
+        if max_examples and n >= max_examples:
+            break
         src = src.to(device); src_mask = src_mask.to(device); tgt = tgt.to(device)
-        pred = greedy_decode(model, src, src_mask, out_w2i, max_len=max_len)
+
+        if constraints is not None:
+            beams_per_ex = beam_decode(model, src, src_mask, out_w2i,
+                                       beam_size=beam_size, max_len=max_len)
+            # For each example, pick best-scoring hypothesis against constraints
+            B = src.size(0)
+            # Build pred batch
+            pred_list = []
+            for bi in range(B):
+                beams = beams_per_ex[bi]
+                # Compute input words (without padding)
+                src_ids_b = src[bi].tolist()
+                input_words = []
+                if in_i2w is not None:
+                    for tid in src_ids_b:
+                        if tid == 0:
+                            break
+                        w = in_i2w.get(tid, "")
+                        if w:
+                            input_words.append(w)
+                # Score beams
+                best = None
+                best_score = -1e18
+                for tokens_t, lp in beams:
+                    lf_toks_ids = tokens_t.tolist()
+                    # Strip trailing EOS / pads
+                    eos = out_w2i[EOS]
+                    if eos in lf_toks_ids:
+                        lf_toks_ids = lf_toks_ids[:lf_toks_ids.index(eos)]
+                    lf_toks_strs = []
+                    if out_i2w is not None:
+                        for tid in lf_toks_ids:
+                            if tid == 0:
+                                break
+                            w = out_i2w.get(tid, "")
+                            if w:
+                                lf_toks_strs.append(w)
+                    adj, viols = score_hypothesis(lf_toks_strs, input_words,
+                                                   constraints, lp)
+                    for v in viols:
+                        key = v.split(":")[0]
+                        viol_counts[key] = viol_counts.get(key, 0) + 1
+                    if adj > best_score:
+                        best_score = adj
+                        best = tokens_t
+                # Diagnostic: find where the gold ranks
+                if diag_cats is not None and cats[bi] in diag_cats:
+                    gold_ids = [t for t in tgt[bi, 1:].tolist() if t != 0]
+                    # Strip trailing EOS
+                    eos = out_w2i[EOS]
+                    if eos in gold_ids:
+                        gold_ids = gold_ids[:gold_ids.index(eos)]
+                    rank = -1
+                    for bi_r, (tk, _lp) in enumerate(beams):
+                        tk_ids = [t for t in tk.tolist() if t != 0]
+                        if eos in tk_ids:
+                            tk_ids = tk_ids[:tk_ids.index(eos)]
+                        if tk_ids == gold_ids:
+                            rank = bi_r
+                            break
+                    beam_rank_log.append((cats[bi], rank, len(beams)))
+                pred_list.append(best if best is not None
+                                 else torch.zeros(1, dtype=torch.long, device=device))
+            # Pad to same length for batch comparison
+            L_max = max(p.size(0) for p in pred_list)
+            pred = torch.zeros(len(pred_list), L_max, dtype=torch.long, device=device)
+            for i_, p_ in enumerate(pred_list):
+                pred[i_, :p_.size(0)] = p_
+        else:
+            pred = greedy_decode(model, src, src_mask, out_w2i, max_len=max_len)
+
         tgt_cmp = tgt[:, 1:]
         Lp, Lt = pred.size(1), tgt_cmp.size(1)
         if Lp < Lt:
@@ -1225,9 +1907,22 @@ def evaluate(model, loader, out_w2i, device, max_len=MAX_DECODE):
         for i, cat in enumerate(cats):
             t_, c_ = by_cat.get(cat, (0, 0))
             by_cat[cat] = (t_ + 1, c_ + (1 if match[i].item() else 0))
+        if constraints is not None and n > 0 and (n // progress_every) != ((n - src.size(0)) // progress_every):
+            elapsed = _time.time() - t_start
+            rate = n / max(elapsed, 1e-9)
+            cur_acc = exact / n * 100
+            total = max_examples if max_examples else len(loader.dataset)
+            eta = (total - n) / max(rate, 1e-9)
+            print(f"    [beam] {n}/{total}  acc={cur_acc:.2f}%  "
+                  f"rate={rate:.1f}ex/s  ETA={eta/60:.1f}min", flush=True)
     by_cat_pct = {c: round(cor / tot * 100, 2) for c, (tot, cor) in sorted(by_cat.items())}
-    return {"exact": exact / n * 100, "tok_acc": tok_c / max(tok_t, 1) * 100,
-            "n": n, "by_cat": by_cat_pct}
+    out = {"exact": exact / n * 100, "tok_acc": tok_c / max(tok_t, 1) * 100,
+           "n": n, "by_cat": by_cat_pct}
+    if constraints is not None:
+        out["violations"] = viol_counts
+        if beam_rank_log:
+            out["beam_rank_log"] = beam_rank_log
+    return out
 
 
 def train_one_run(variant: str, seed: int, args):
@@ -1326,10 +2021,60 @@ def train_one_run(variant: str, seed: int, args):
             print(f"           {l[:100]}...")
         train_pairs = train_pairs + pp_rec
 
+    # Innovation K — Peel-and-stack (minimal viable): iterate PP recursion extension
+    # to cover depths 3, 4, 5 (or more with --peel-stack-depth N).
+    if getattr(args, "peel_stack", False):
+        ps_depth = getattr(args, "peel_stack_depth", 3)
+        print(f"PEEL-AND-STACK augmentation ON (depth={ps_depth}):")
+        cur_pairs = list(train_pairs)
+        total_k = 0
+        for depth_level in range(ps_depth):
+            pp_next = generate_pp_recursion_extension(cur_pairs, max_aug=700)
+            if not pp_next:
+                break
+            print(f"  depth_level {depth_level+1}: +{len(pp_next)} examples")
+            cur_pairs = cur_pairs + pp_next
+            train_pairs = train_pairs + pp_next
+            total_k += len(pp_next)
+        print(f"  Total peel-stack augmentation: {total_k}")
+
+    # Innovation: Cross-voice augmentation
+    if getattr(args, "cross_voice", False):
+        cv_n = getattr(args, "cross_voice_n", 0)
+        cv_oversample = max(1, getattr(args, "cross_voice_oversample", 1))
+        cv_pairs, cv_stats = generate_cross_voice_pairs(
+            train_pairs, n_pairs=(cv_n if cv_n > 0 else None), seed=seed)
+        cv_stats["oversample"] = cv_oversample
+        print(f"CROSS-VOICE augmentation ON:")
+        print(f"  past-tense map: {cv_stats['pt_map_size']} verbs  "
+              f"past-participle map: {cv_stats['pp_map_size']} verbs")
+        print(f"  candidates: a2p={cv_stats['n_a2p_generated']}  "
+              f"p2a={cv_stats['n_p2a_generated']}  skipped={cv_stats['n_skipped']}")
+        n_unique = len(cv_pairs)
+        if cv_oversample > 1:
+            cv_pairs_final = cv_pairs * cv_oversample
+            print(f"  final: {n_unique} unique × {cv_oversample} oversample = "
+                  f"{len(cv_pairs_final)} pairs added to train")
+        else:
+            cv_pairs_final = cv_pairs
+            print(f"  final (after dedupe + cap): {n_unique} pairs added to train")
+        for i, (a, l, tag) in enumerate(cv_pairs[:3]):
+            print(f"    cv{i} [{tag}]: {a}")
+            print(f"             {l[:100]}...")
+        train_pairs = train_pairs + cv_pairs_final
+        with open(os.path.join(run_dir, "cross_voice_stats.json"), "w") as f:
+            json.dump(cv_stats, f, indent=2)
+
     print(f"train: {len(train_pairs)}  dev: {len(dev_pairs)}  gen: {len(gen_pairs)}")
 
-    in_w2i, out_w2i = build_vocabs(train_pairs + dev_pairs + gen_pairs)
-    print(f"Input vocab: {len(in_w2i)}  Output vocab: {len(out_w2i)}")
+    bidirectional = getattr(args, "bidirectional", False)
+    if bidirectional:
+        unified = build_unified_vocab(train_pairs + dev_pairs + gen_pairs)
+        in_w2i, out_w2i = unified, unified
+        print(f"BIDIRECTIONAL: unified vocab = {len(unified)}")
+    else:
+        in_w2i, out_w2i = build_vocabs(train_pairs + dev_pairs + gen_pairs)
+        print(f"Input vocab: {len(in_w2i)}  Output vocab: {len(out_w2i)}")
 
     # Build permutation classes depending on variant
     perm_classes = []
@@ -1399,7 +2144,9 @@ def train_one_run(variant: str, seed: int, args):
         json.dump(perm_log, f, indent=2)
 
     tr_ds = COGSDataset(train_pairs, in_w2i, out_w2i,
-                        perm_classes=perm_classes if variant in ("B1", "B2", "B2b", "B2c", "B4", "B4_turbo", "B5", "B5_lite", "B6", "B7a", "B7c") else None)
+                        perm_classes=perm_classes if variant in ("B1", "B2", "B2b", "B2c", "B4", "B4_turbo", "B5", "B5_lite", "B6", "B7a", "B7c") else None,
+                        bidirectional=bidirectional)
+    # dev and gen are ALWAYS in forward direction (we evaluate phrase → LF)
     dv_ds = COGSDataset(dev_pairs,   in_w2i, out_w2i)
     ge_ds = COGSDataset(gen_pairs,   in_w2i, out_w2i)
 
@@ -1411,6 +2158,10 @@ def train_one_run(variant: str, seed: int, args):
     # Clip very long targets from vocab-side max_out (safety)
     mx_in = max(MAX_IN, max(len(p[0].split()) for p in train_pairs + dev_pairs + gen_pairs) + 2)
     mx_out = max(MAX_OUT, max(len(p[1].split()) for p in train_pairs + dev_pairs + gen_pairs) + 4)
+    if bidirectional:
+        # Symmetrize: either direction might see either length
+        mx = max(mx_in, mx_out)
+        mx_in = mx_out = mx
     use_copy = getattr(args, "copy", False)
     use_tags = getattr(args, "tags", False)
     if use_tags:
@@ -1436,6 +2187,17 @@ def train_one_run(variant: str, seed: int, args):
         model = TransformerSeq2Seq(len(in_w2i), len(out_w2i),
                                    d_model=args.d_model,
                                    max_in=mx_in, max_out=mx_out).to(device)
+    # Bidirectional: tie input/output embeddings (single embedding for unified vocab)
+    if bidirectional:
+        model.out_emb.weight = model.in_emb.weight
+        # Tie positional embeddings if shapes match
+        if model.in_pe.weight.shape == model.out_pe.weight.shape:
+            model.out_pe.weight = model.in_pe.weight
+        # For copy: in_to_out is identity on unified vocab
+        if hasattr(model, "in_to_out_map"):
+            model.in_to_out_map = torch.arange(len(in_w2i), dtype=torch.long).to(device)
+        print("  BIDIRECTIONAL: embeddings tied (in_emb = out_emb)")
+
     n_params = sum(p.numel() for p in model.parameters())
     print(f"Params: {n_params/1e6:.2f}M  max_in={model.max_in}  max_out={model.max_out}")
 
@@ -1455,14 +2217,70 @@ def train_one_run(variant: str, seed: int, args):
     epoch_times = []
     last_gen_m = {"exact": 0.0, "tok_acc": 0.0, "n": 0}
 
+    # Innovation B — Selective forgetting setup
+    sel_forget = getattr(args, "selective_forgetting", False)
+    forget_mode = getattr(args, "forgetting_mode", "permute")
+    forget_every = getattr(args, "forgetting_every", 20)
+    forget_duration = getattr(args, "forgetting_duration", 1)
+    forget_start = getattr(args, "forgetting_start", 0)
+    if sel_forget:
+        print(f"SELECTIVE FORGETTING ON: mode={forget_mode} start@ep{forget_start} "
+              f"cycle={forget_every}ep ({forget_duration}ep perturbed + {forget_every - forget_duration}ep clean)")
+
     for ep in range(args.epochs):
         t_ep = time.time()
         model.train()
         tr_loss = 0.0; n_batches = 0
 
-        # Scheduled sampling (copy only): TFR = 1.0 for ep<20, then linear 1.0→0.5 up to ep=60
-        if use_copy and ep >= 20:
-            progress = min(max((ep - 20) / max(args.epochs - 20, 1), 0.0), 1.0)
+        # Innovation B — warmup until forget_start, then cycles of `forget_duration` perturbed
+        # epochs followed by `forget_every - forget_duration` clean epochs.
+        # Mode=gentle is single-shot: fires only in [forget_start, forget_start + forget_duration),
+        # then never again regardless of forget_every (free reconstruction phase).
+        if sel_forget and ep >= forget_start:
+            if forget_mode == "gentle":
+                forget_active = ep < forget_start + forget_duration
+            else:
+                cycle_pos = (ep - forget_start) % forget_every
+                forget_active = cycle_pos < forget_duration
+        else:
+            forget_active = False
+        # Gentle-mode one-time marker when the single shot window ends
+        if sel_forget and forget_mode == "gentle" and ep == forget_start + forget_duration:
+            print(f"  [forget:gentle] ep={ep} — perturbation over, free reconstruction begins")
+        if forget_active:
+            with torch.no_grad():
+                if forget_mode in ("permute", "gentle"):
+                    # Permute positional embeddings to disrupt position→role binding.
+                    # 'gentle' uses the same perturbation but fires only once (single shot).
+                    L_in = model.in_pe.weight.size(0)
+                    perm_in = torch.randperm(L_in, device=model.in_pe.weight.device)
+                    model.in_pe.weight.data = model.in_pe.weight.data[perm_in]
+                    if not bidirectional:
+                        L_out = model.out_pe.weight.size(0)
+                        perm_out = torch.randperm(L_out, device=model.out_pe.weight.device)
+                        model.out_pe.weight.data = model.out_pe.weight.data[perm_out]
+                    print(f"  [forget:{forget_mode}] ep={ep} — positional embeddings permuted")
+                elif forget_mode == "dropout":
+                    # Heavy stochastic zero-out of pos embeddings (80%)
+                    mask = (torch.rand_like(model.in_pe.weight) > 0.8).float()
+                    model.in_pe.weight.data.mul_(mask)
+                    if not bidirectional:
+                        mask_o = (torch.rand_like(model.out_pe.weight) > 0.8).float()
+                        model.out_pe.weight.data.mul_(mask_o)
+                    print(f"  [forget:dropout] ep={ep} — 80% of pos embeddings zeroed")
+                elif forget_mode == "reset":
+                    # Reinit first encoder self-attention (where position→role binding is formed)
+                    layer0 = model.encoder.layers[0]
+                    if hasattr(layer0.self_attn, "in_proj_weight") and layer0.self_attn.in_proj_weight is not None:
+                        nn.init.xavier_uniform_(layer0.self_attn.in_proj_weight)
+                    if hasattr(layer0.self_attn, "out_proj"):
+                        nn.init.xavier_uniform_(layer0.self_attn.out_proj.weight)
+                    print(f"  [forget:reset] ep={ep} — first encoder self-attn reinitialized")
+
+        # Scheduled sampling (copy only): TFR = 1.0 until ep=tfr_start, then linear 1.0→0.5 up to end
+        tfr_start = getattr(args, "tfr_start", 20)
+        if use_copy and ep >= tfr_start:
+            progress = min(max((ep - tfr_start) / max(args.epochs - tfr_start, 1), 0.0), 1.0)
             tfr = 1.0 - 0.5 * progress
         else:
             tfr = 1.0
@@ -1495,6 +2313,24 @@ def train_one_run(variant: str, seed: int, args):
                 else:
                     loss = F.cross_entropy(logits.reshape(-1, V), tgt_out.reshape(-1),
                                            ignore_index=0, label_smoothing=0.1)
+                # Innovation C — Contrastive errors (per-token margin loss)
+                # Push gold log-prob above the top-1 non-gold competitor by `margin`.
+                # No extra forward, uses logits already computed. Masks PAD positions.
+                if getattr(args, "contrastive_errors", False):
+                    c_margin = 1.0
+                    c_lambda = 0.2
+                    if info.get("uses_copy"):
+                        log_probs_all = logits  # already log-probs under copy
+                    else:
+                        log_probs_all = F.log_softmax(logits, dim=-1)
+                    gold_lp = log_probs_all.gather(-1, tgt_out.unsqueeze(-1)).squeeze(-1)  # (B, T)
+                    top2_lp, top2_idx = log_probs_all.topk(2, dim=-1)                     # (B, T, 2)
+                    is_gold_top1 = (top2_idx[..., 0] == tgt_out)
+                    competitor_lp = torch.where(is_gold_top1, top2_lp[..., 1], top2_lp[..., 0])
+                    c_per_tok = F.relu(competitor_lp - gold_lp + c_margin)
+                    c_mask = (tgt_out != 0).float()
+                    c_loss = (c_per_tok * c_mask).sum() / c_mask.sum().clamp(min=1.0)
+                    loss = loss + c_lambda * c_loss
                 # Auxiliary role tagger loss (Copy+Tags only)
                 if info.get("uses_tags"):
                     rl = info["role_logits"]                       # (B, T_src, N)
@@ -1564,6 +2400,62 @@ def train_one_run(variant: str, seed: int, args):
         for cat, pct in sorted(greedy_gen["by_cat"].items(), key=lambda x: -x[1]):
             print(f"    {cat:50s} {pct:6.2f}%")
 
+    # Optional: constrained beam search eval (Innovation: --constrained-beam)
+    constrained_gen = None
+    if getattr(args, "constrained_beam", False):
+        beam_size = getattr(args, "beam_size", 10)
+        print(f"Running constrained beam search eval (k={beam_size}) on gen...")
+        constraints = extract_train_constraints(train_pairs)
+        in_i2w = {v: k for k, v in in_w2i.items()}
+        out_i2w = {v: k for k, v in out_w2i.items()}
+        diag_cats = {"active_to_passive", "passive_to_active",
+                     "do_dative_to_pp_dative", "pp_dative_to_do_dative",
+                     "unacc_to_transitive", "obj_omitted_transitive_to_transitive",
+                     "cp_recursion"}
+        print(f"  Constraints: {len(constraints['always_agent'])} always_agent, "
+              f"{len(constraints['always_theme'])} always_theme, "
+              f"{len(constraints['known_verbs'])} verbs, "
+              f"{len(constraints['proper_names'])} proper_names")
+        fast_mode = getattr(args, "fast", False)
+        beam_max = getattr(args, "beam_max_examples", 0)
+        prog_every = 500
+        if fast_mode:
+            if beam_max == 0:
+                beam_max = 500
+            prog_every = 50
+            print(f"  FAST MODE: evaluating {beam_max} examples only, progress every {prog_every}")
+        constrained_gen = evaluate(model, ge_ld, out_w2i, device,
+                                   constraints=constraints, beam_size=beam_size,
+                                   in_i2w=in_i2w, out_i2w=out_i2w, diag_cats=diag_cats,
+                                   max_examples=beam_max, progress_every=prog_every)
+        print(f"  Constrained-beam gen_ex={constrained_gen['exact']:.2f}% "
+              f"(greedy was {greedy_gen['exact']:.2f}%)")
+        if "by_cat" in constrained_gen:
+            print("  Per-category gen (constrained beam):")
+            for cat, pct in sorted(constrained_gen["by_cat"].items(), key=lambda x: -x[1]):
+                print(f"    {cat:50s} {pct:6.2f}%")
+        if constrained_gen.get("violations"):
+            print("  Violations counted over all beams considered:")
+            for k, v in sorted(constrained_gen["violations"].items(), key=lambda x: -x[1]):
+                print(f"    {k:20s} {v}")
+        # Beam rank diagnostic on structural categories
+        if constrained_gen.get("beam_rank_log"):
+            brl = constrained_gen["beam_rank_log"]
+            from collections import defaultdict
+            by_c = defaultdict(list)
+            for cat, rank, nb in brl:
+                by_c[cat].append(rank)
+            print("  Gold rank in beams (structural categories):")
+            for cat in sorted(by_c):
+                ranks = by_c[cat]
+                found = [r for r in ranks if r >= 0]
+                notfound = len(ranks) - len(found)
+                if found:
+                    print(f"    {cat:50s} gold found in beams: {len(found)}/{len(ranks)} "
+                          f"(median rank {sorted(found)[len(found)//2]})")
+                else:
+                    print(f"    {cat:50s} gold NEVER in top-{beam_size} beams ({notfound} examples)")
+
     summary = {
         "variant": variant, "seed": seed, "args": vars(args),
         "n_params": n_params, "epochs_run": ep + 1,
@@ -1578,6 +2470,10 @@ def train_one_run(variant: str, seed: int, args):
         "n_proper_names":   n_proper_names,
         "run_dir": run_dir,
     }
+    if constrained_gen is not None:
+        summary["final_gen_exact_constrained_beam"] = constrained_gen["exact"]
+        summary["constrained_beam_by_cat"] = constrained_gen.get("by_cat", {})
+        summary["constrained_beam_violations"] = constrained_gen.get("violations", {})
     with open(os.path.join(run_dir, "summary.json"), "w") as f:
         json.dump(summary, f, indent=2)
     torch.save({"state_dict": model.state_dict(), "in_w2i": in_w2i,
@@ -1616,5 +2512,40 @@ if __name__ == "__main__":
                    help="Enable copy mechanism (pointer network) in decoder")
     p.add_argument("--tags", action="store_true",
                    help="Enable structural role tagger (implies --copy)")
+    p.add_argument("--bidirectional", action="store_true",
+                   help="Train both phrase→LF and LF→phrase (50/50). Uses unified vocab.")
+    p.add_argument("--selective-forgetting", action="store_true",
+                   help="Innovation B: periodically perturb positional bindings to force re-learning position→role")
+    p.add_argument("--forgetting-mode", type=str, default="permute",
+                   choices=["dropout", "permute", "reset", "gentle"],
+                   help="Perturbation type for --selective-forgetting. 'gentle' = single-shot permute at forgetting_start for forgetting_duration epochs, then free reconstruction (no restore).")
+    p.add_argument("--forgetting-every", type=int, default=20,
+                   help="Cycle length (in epochs) for selective forgetting")
+    p.add_argument("--forgetting-duration", type=int, default=1,
+                   help="Number of consecutive epochs within each cycle to apply perturbation")
+    p.add_argument("--forgetting-start", type=int, default=0,
+                   help="Epoch at which selective-forgetting cycles begin (warmup before)")
+    p.add_argument("--peel-stack", action="store_true",
+                   help="Innovation K: train-time decomposition of PP-containing examples into sub-problems")
+    p.add_argument("--peel-stack-depth", type=int, default=3,
+                   help="Number of cascade iterations for peel-stack (each adds +1 PP depth). Default 3 → depths 3,4,5.")
+    p.add_argument("--contrastive-errors", action="store_true",
+                   help="Innovation C: per-token margin loss pushing gold above top-1 competitor (lambda=0.2, margin=1.0)")
+    p.add_argument("--constrained-beam", action="store_true",
+                   help="Inference-only: beam search + re-ranking with train-set constraints")
+    p.add_argument("--beam-size", type=int, default=10,
+                   help="Beam size for --constrained-beam (default 10)")
+    p.add_argument("--beam-max-examples", type=int, default=0,
+                   help="Cap number of gen examples evaluated under --constrained-beam (0 = all)")
+    p.add_argument("--fast", action="store_true",
+                   help="Quick diagnostic mode for --constrained-beam: caps at 500 examples and prints progress every 50")
+    p.add_argument("--cross-voice", action="store_true",
+                   help="Innovation: add active↔passive augmentation pairs to train")
+    p.add_argument("--cross-voice-n", type=int, default=0,
+                   help="Cap on number of cross-voice pairs added (0 = all available)")
+    p.add_argument("--cross-voice-oversample", type=int, default=1,
+                   help="Repeat cross-voice pairs N times in train (to up-weight them)")
+    p.add_argument("--tfr-start", type=int, default=20,
+                   help="Epoch at which scheduled sampling begins ramping TFR from 1.0→0.5 (copy only)")
     args = p.parse_args()
     train_one_run(args.variant, args.seed, args)
