@@ -3159,8 +3159,11 @@ def train_one_run(variant: str, seed: int, args):
 # ══════════════════════════════════════════════════════════════
 # Main
 # ══════════════════════════════════════════════════════════════
-if __name__ == "__main__":
-    p = argparse.ArgumentParser(description="COGS compositional generalization")
+def build_arg_parser(description="COGS compositional generalization"):
+    """Build the full argparse parser with every mechanism flag. Shared by
+    cogs_compositional.py (__main__) and slog_compositional.py so that SLOG
+    benefits from every augmentation added to COGS automatically."""
+    p = argparse.ArgumentParser(description=description)
     p.add_argument("--variant", type=str,
                    choices=["B0", "B1", "B2", "B2b", "B2c", "B3", "B3_auto", "B4",
                             "B4_turbo", "B5", "B5_lite", "B6", "B7a", "B7c"],
@@ -3253,5 +3256,10 @@ if __name__ == "__main__":
                    help="Every batch has a fixed cv/orig ratio (requires --cross-voice). See --cv-ratio.")
     p.add_argument("--cv-ratio", type=float, default=0.3,
                    help="Fraction of cross-voice examples per batch when --curriculum-balanced is on")
+    return p
+
+
+if __name__ == "__main__":
+    p = build_arg_parser("COGS compositional generalization")
     args = p.parse_args()
     train_one_run(args.variant, args.seed, args)
