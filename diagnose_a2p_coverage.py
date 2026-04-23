@@ -1,20 +1,42 @@
 #!/usr/bin/env python3
-"""Diagnostic: for active_to_passive gen examples, which verbs are covered
-by passive examples in train?
+"""Diagnostic: for each structural generalization category in the gen set,
+compute verb coverage against the permute-verbs pool (plus custom valency
+analysis for active_to_passive / passive_to_active / unacc_to_transitive).
+
+Works on either COGS or SLOG via --dataset.
 
 Usage:
-  python3 diagnose_a2p_coverage.py
+  python3 diagnose_a2p_coverage.py --dataset cogs
+  python3 diagnose_a2p_coverage.py --dataset slog
+  python3 diagnose_a2p_coverage.py --dataset slog --all-structural  # print coverage for every structural category found
 """
 import os
+import argparse
 from collections import Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TRAIN = os.path.join(HERE, "data", "cogs", "train.tsv")
-GEN = os.path.join(HERE, "data", "cogs", "gen.tsv")
+
+# Categories that behave like COGS voice/valency alternations and that we
+# specifically analyse with the passive/active/transitive decomposition.
+VOICE_CATEGORIES = {
+    "active_to_passive",
+    "passive_to_active",
+    "unacc_to_transitive",
+    "obj_omitted_transitive_to_transitive",
+    "do_dative_to_pp_dative",
+    "pp_dative_to_do_dative",
+}
+
+# Heuristic: any gen category whose name contains one of these keywords is
+# treated as "structural" and gets a pool-coverage summary when
+# --all-structural is passed.
+STRUCTURAL_KEYWORDS = (
+    "passive", "active", "dative", "transitive", "unacc", "recursion", "cp_",
+    "pp_", "center", "question", "relative",
+)
 
 
 def extract_verb_from_lf(lf):
-    """Return first verb lemma found before '.agent' or '.theme' in LF."""
     toks = lf.split()
     for j in range(len(toks) - 2):
         if toks[j + 1] == "." and toks[j + 2] in ("agent", "theme"):
@@ -32,142 +54,244 @@ def load_tsv(path):
     return rows
 
 
-# Load train
-train = load_tsv(TRAIN)
-gen = load_tsv(GEN)
-
-# Verbs seen in passive in train (input contains 'was' + 'by')
-train_passive_verbs = set()
-train_active_verbs = set()
-for inp, lf, _ in train:
-    verb = extract_verb_from_lf(lf)
-    if verb is None:
-        continue
-    toks = inp.split()
-    if "was" in toks and "by" in toks:
-        train_passive_verbs.add(verb)
-    else:
-        train_active_verbs.add(verb)
-
-# Gen: active_to_passive and passive_to_active
-gen_a2p = [(inp, lf) for inp, lf, cat in gen if cat == "active_to_passive"]
-gen_p2a = [(inp, lf) for inp, lf, cat in gen if cat == "passive_to_active"]
-
-gen_a2p_verbs = Counter()
-gen_p2a_verbs = Counter()
-for inp, lf in gen_a2p:
-    v = extract_verb_from_lf(lf)
-    if v:
-        gen_a2p_verbs[v] += 1
-for inp, lf in gen_p2a:
-    v = extract_verb_from_lf(lf)
-    if v:
-        gen_p2a_verbs[v] += 1
+def dataset_paths(dataset):
+    if dataset == "cogs":
+        return {
+            "train": os.path.join(HERE, "data", "cogs", "train.tsv"),
+            "gen":   os.path.join(HERE, "data", "cogs", "gen.tsv"),
+        }
+    if dataset == "slog":
+        slog_root = os.path.join(HERE, "data", "slog")
+        # SLOG's gen file lives under generalization_sets/gen_cogsLF.tsv.
+        gen_candidates = [
+            os.path.join(slog_root, "generalization_sets", "gen_cogsLF.tsv"),
+            os.path.join(slog_root, "gen.tsv"),
+        ]
+        gen_path = next((p for p in gen_candidates if os.path.exists(p)), gen_candidates[0])
+        return {"train": os.path.join(slog_root, "train.tsv"), "gen": gen_path}
+    raise ValueError(f"Unknown dataset: {dataset}")
 
 
-def classify(gen_verbs, train_passive_verbs, train_active_verbs, label, opposite_direction_msg):
-    unique_verbs = set(gen_verbs.keys())
-    seen_in_passive = unique_verbs & train_passive_verbs
-    not_seen_in_passive = unique_verbs - train_passive_verbs
-    seen_only_in_active = unique_verbs & train_active_verbs - train_passive_verbs
-    not_seen_at_all = unique_verbs - train_passive_verbs - train_active_verbs
-
-    total_examples = sum(gen_verbs.values())
-    covered_examples = sum(gen_verbs[v] for v in seen_in_passive)
-    uncovered_examples = total_examples - covered_examples
-
-    print(f"\n=== {label} ===")
-    print(f"Total gen examples: {total_examples}")
-    print(f"Unique verbs in gen: {len(unique_verbs)}")
-    print(f"  Seen in passive in train: {len(seen_in_passive)}")
-    print(f"  NOT seen in passive in train: {len(not_seen_in_passive)}")
-    print(f"    └─ seen only in active: {len(seen_only_in_active)}")
-    print(f"    └─ not seen at all: {len(not_seen_at_all)}")
-    print(f"\nExample-level coverage:")
-    print(f"  Covered (verb has passive form in train): {covered_examples}/{total_examples} "
-          f"({100*covered_examples/max(total_examples,1):.1f}%)")
-    print(f"  UNcovered ({opposite_direction_msg}): {uncovered_examples}/{total_examples} "
-          f"({100*uncovered_examples/max(total_examples,1):.1f}%)")
-
-    print(f"\nTop 15 uncovered verbs (by frequency in gen):")
-    uncovered_verb_list = [(v, c) for v, c in gen_verbs.most_common() if v in not_seen_in_passive]
-    for v, c in uncovered_verb_list[:15]:
-        status = "active-only" if v in seen_only_in_active else "unseen"
-        print(f"  {v:20s} {c:4d} ({status})")
-
-    print(f"\nTop 15 covered verbs (by frequency in gen):")
-    for v, c in gen_verbs.most_common():
-        if v in seen_in_passive:
-            print(f"  {v:20s} {c:4d}")
+# ══════════════════════════════════════════════════════════════
+# Pool + valency analysis functions (dataset-agnostic)
+# ══════════════════════════════════════════════════════════════
+def build_pt_pp_maps(train):
+    """Same logic as cogs_compositional.build_verb_form_maps: extract the verb
+    lemma via `.agent` in LF and record the input token at that position."""
+    pt_map, pp_map = {}, {}
+    for inp, lf, _ in train:
+        verb = extract_verb_from_lf(lf)
+        if verb is None:
+            continue
+        toks = inp.split()
+        lf_toks = lf.split()
+        verb_pos = None
+        for j in range(len(lf_toks) - 6):
+            if lf_toks[j + 1] == "." and lf_toks[j + 2] == "agent" \
+                    and lf_toks[j + 3] == "(" and lf_toks[j + 4] == "x" \
+                    and lf_toks[j + 5] == "_" and lf_toks[j + 6].isdigit():
+                verb_pos = int(lf_toks[j + 6])
+                break
+        if verb_pos is None or verb_pos >= len(toks):
+            continue
+        verb_word = toks[verb_pos]
+        if "was" in toks and "by" in toks:
+            pp_map.setdefault(verb, verb_word)
+        else:
+            pt_map.setdefault(verb, verb_word)
+    return pt_map, pp_map
 
 
-classify(gen_a2p_verbs, train_passive_verbs, train_active_verbs,
-         "active_to_passive (tested as passives in gen)",
-         "verb never in passive form in train")
+def build_pool_verbs(train):
+    pt_map, pp_map = build_pt_pp_maps(train)
+    pp_with_morph = dict(pp_map)
+    for lemma, past in pt_map.items():
+        if lemma not in pp_with_morph and past.endswith("ed"):
+            pp_with_morph[lemma] = past
+    return set(pt_map.keys()) & set(pp_with_morph.keys()), pt_map, pp_with_morph
 
-# For p2a, the test sentences are actives; we need the opposite check:
-# which verbs are covered by active examples in train?
-classify(gen_p2a_verbs, train_active_verbs, train_passive_verbs,
-         "passive_to_active (tested as actives in gen)",
-         "verb never in active form in train")
 
-print(f"\n=== Summary ===")
-print(f"train_passive_verbs (usable for a2p via cross-voice): {len(train_passive_verbs)}")
-print(f"train_active_verbs (usable for p2a via cross-voice): {len(train_active_verbs)}")
-print(f"Intersection (both voices seen): {len(train_passive_verbs & train_active_verbs)}")
+def verbs_with_roles(lf):
+    toks = lf.split()
+    with_agent, with_theme = set(), set()
+    for j in range(len(toks) - 2):
+        if toks[j + 1] == "." and toks[j + 2] in ("agent", "theme"):
+            v = toks[j]
+            if toks[j + 2] == "agent":
+                with_agent.add(v)
+            elif toks[j + 2] == "theme":
+                with_theme.add(v)
+    return with_agent, with_theme
 
-# --- Permute-verbs pool coverage ---
-# A verb enters the permute-verbs pool if it has BOTH a past_tense form (from
-# train actives) AND a past_participle form (from train passives, or regular
-# -ed fallback). Compute this with the same logic as build_verb_perm_pool.
-print(f"\n=== Permute-verbs pool coverage ===")
 
-# Build pt_map and pp_map (with morphology fallback, as used in the flag)
-pt_map, pp_map = {}, {}
-for inp, lf, _ in train:
-    verb = extract_verb_from_lf(lf)
-    if verb is None:
-        continue
-    toks = inp.split()
-    # Find the verb position in the input via LF
-    lf_toks = lf.split()
-    verb_pos = None
-    for j in range(len(lf_toks) - 6):
-        if lf_toks[j + 1] == "." and lf_toks[j + 2] == "agent" \
-                and lf_toks[j + 3] == "(" and lf_toks[j + 4] == "x" \
-                and lf_toks[j + 5] == "_" and lf_toks[j + 6].isdigit():
-            verb_pos = int(lf_toks[j + 6])
-            break
-    if verb_pos is None or verb_pos >= len(toks):
-        continue
-    verb_word = toks[verb_pos]
-    if "was" in toks and "by" in toks:
-        pp_map.setdefault(verb, verb_word)
-    else:
-        pt_map.setdefault(verb, verb_word)
+def classify_valency(train):
+    agent_verbs, theme_verbs = set(), set()
+    transitive_example_verbs = set()
+    for _inp, lf, _cat in train:
+        wa, wt = verbs_with_roles(lf)
+        agent_verbs |= wa
+        theme_verbs |= wt
+        transitive_example_verbs |= (wa & wt)
+    return {
+        "agent": agent_verbs,
+        "theme": theme_verbs,
+        "transitive_example": transitive_example_verbs,
+        "unacc_only": theme_verbs - agent_verbs,
+    }
 
-# Morphological fallback: verbs in pt_map but not pp_map, assume regular
-pp_map_with_fallback = dict(pp_map)
-for lemma, past in pt_map.items():
-    if lemma not in pp_map_with_fallback and past.endswith("ed"):
-        pp_map_with_fallback[lemma] = past
 
-pool_verbs = set(pt_map.keys()) & set(pp_map_with_fallback.keys())
-print(f"Pool (pt_map ∩ pp_map with morphology fallback): {len(pool_verbs)} verbs")
+def classify_voice(train):
+    """COGS voice heuristic: input has was+by ⇒ passive. (Good for COGS, noisy
+    on SLOG but still informative.)"""
+    passive, active = set(), set()
+    for inp, lf, _ in train:
+        v = extract_verb_from_lf(lf)
+        if v is None:
+            continue
+        toks = inp.split()
+        if "was" in toks and "by" in toks:
+            passive.add(v)
+        else:
+            active.add(v)
+    return passive, active
 
-for label, verbs_counter in [("active_to_passive gen", gen_a2p_verbs),
-                              ("passive_to_active gen", gen_p2a_verbs)]:
+
+# ══════════════════════════════════════════════════════════════
+# Per-category summary
+# ══════════════════════════════════════════════════════════════
+def summarise_pool_coverage(label, verbs_counter, pool_verbs):
     unique_verbs = set(verbs_counter.keys())
     in_pool = unique_verbs & pool_verbs
     out_pool = unique_verbs - pool_verbs
     examples_in = sum(verbs_counter[v] for v in in_pool)
     examples_out = sum(verbs_counter[v] for v in out_pool)
     total = sum(verbs_counter.values())
-    print(f"\n  {label}:")
-    print(f"    unique verbs in pool: {len(in_pool)}/{len(unique_verbs)}")
-    print(f"    examples covered by pool: {examples_in}/{total} "
-          f"({100*examples_in/max(total,1):.1f}%)")
+    print(f"  {label} ({total} examples, {len(unique_verbs)} unique verbs):")
+    print(f"    verbs in permute pool: {len(in_pool)}/{len(unique_verbs)}  "
+          f"→ {examples_in}/{total} examples ({100*examples_in/max(total,1):.1f}%)")
     if out_pool:
-        print(f"    verbs OUT of pool: {sorted(out_pool)}")
-        print(f"    (example-level coverage loss: {examples_out}/{total} = "
+        top_out = sorted(out_pool, key=lambda v: -verbs_counter[v])
+        print(f"    verbs OUT of pool: {top_out[:10]}"
+              + (f" (+{len(top_out)-10} more)" if len(top_out) > 10 else ""))
+        print(f"    (example-level loss: {examples_out}/{total} = "
               f"{100*examples_out/max(total,1):.1f}%)")
+
+
+def detailed_per_verb(verbs_counter, pool_verbs, valency, voice):
+    """Print per-verb detail for small categories (AGENT/THEME/TRANSITIVE/UNACC
+    flags + voice hint)."""
+    passive_verbs = voice[0]
+    active_verbs = voice[1]
+    for v, c in verbs_counter.most_common():
+        flags = [
+            ("pool",               v in pool_verbs),
+            ("seen_transitive",    v in valency["transitive_example"]),
+            ("unacc_only",         v in valency["unacc_only"]),
+            ("train_passive_seen", v in passive_verbs),
+            ("train_active_seen",  v in active_verbs),
+        ]
+        flags_str = "  ".join(f"{n}={'✓' if ok else '✗'}" for n, ok in flags)
+        print(f"      {v:20s} {c:4d}  {flags_str}")
+
+
+# ══════════════════════════════════════════════════════════════
+# Main
+# ══════════════════════════════════════════════════════════════
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dataset", type=str, default="cogs",
+                    choices=["cogs", "slog"])
+    ap.add_argument("--all-structural", action="store_true",
+                    help="Print pool coverage for every category whose name contains a structural keyword (not just the voice categories).")
+    args = ap.parse_args()
+
+    paths = dataset_paths(args.dataset)
+    print(f"Dataset: {args.dataset}")
+    print(f"  train: {paths['train']}")
+    print(f"  gen:   {paths['gen']}")
+    train = load_tsv(paths["train"])
+    gen = load_tsv(paths["gen"])
+    print(f"Loaded {len(train)} train, {len(gen)} gen.\n")
+
+    # --- Voice heuristic (COGS-style) ---
+    passive_verbs, active_verbs = classify_voice(train)
+    print(f"Voice heuristic from train:")
+    print(f"  verbs ever passive (was + by): {len(passive_verbs)}")
+    print(f"  verbs ever active (no was+by): {len(active_verbs)}")
+    print(f"  intersection: {len(passive_verbs & active_verbs)}\n")
+
+    # --- Permute-verbs pool ---
+    pool_verbs, pt_map, pp_map_morph = build_pool_verbs(train)
+    print(f"Permute-verbs pool (pt_map ∩ pp_map with -ed morphology fallback): "
+          f"{len(pool_verbs)} verbs\n")
+
+    # --- Valency classification ---
+    valency = classify_valency(train)
+    print(f"Valency analysis from train:")
+    print(f"  verbs with .agent:                       {len(valency['agent'])}")
+    print(f"  verbs with .theme:                       {len(valency['theme'])}")
+    print(f"  verbs seen transitive (.agent + .theme): {len(valency['transitive_example'])}")
+    print(f"  verbs unaccusative only (.theme no .agent): {len(valency['unacc_only'])}")
+    if valency["unacc_only"]:
+        print(f"    list: {sorted(valency['unacc_only'])}")
+    print()
+
+    # --- Group gen examples by category ---
+    gen_by_cat = {}
+    for inp, lf, cat in gen:
+        v = extract_verb_from_lf(lf)
+        if v is None:
+            continue
+        gen_by_cat.setdefault(cat, Counter())[v] += 1
+
+    # --- Per-voice-category detail ---
+    print("=" * 60)
+    print("Per-category verb coverage against permute-verbs pool:")
+    print("=" * 60)
+    categories_to_show = sorted(set(gen_by_cat) & VOICE_CATEGORIES)
+    if args.all_structural:
+        for cat in sorted(gen_by_cat):
+            if cat in categories_to_show:
+                continue
+            low = cat.lower()
+            if any(k in low for k in STRUCTURAL_KEYWORDS):
+                categories_to_show.append(cat)
+
+    for cat in categories_to_show:
+        counter = gen_by_cat[cat]
+        print()
+        summarise_pool_coverage(cat, counter, pool_verbs)
+        # Detailed per-verb table for the 3 voice/valency categories
+        if cat in {"active_to_passive", "passive_to_active", "unacc_to_transitive"}:
+            print(f"    per-verb flags:")
+            detailed_per_verb(counter, pool_verbs, valency,
+                              (passive_verbs, active_verbs))
+
+    # --- Recap: verbs that would benefit from being force-added to the pool ---
+    # A verb benefits if it is in gen (any structural category) AND is out of pool
+    # but exists in train (as .theme-only or passive-only) and its regular -ed form
+    # would resolve it.
+    candidates = set()
+    for cat, counter in gen_by_cat.items():
+        if cat not in categories_to_show:
+            continue
+        candidates |= (set(counter.keys()) - pool_verbs)
+    # Filter to those known to exist in train (via valency.theme)
+    candidates_in_train = candidates & (valency["agent"] | valency["theme"])
+    print("\n" + "=" * 60)
+    print("Candidates for FORCED_REGULAR_VERBS_FOR_POOL:")
+    print("=" * 60)
+    if not candidates_in_train:
+        print("  (none — current pool already covers all structural-test verbs)")
+    else:
+        for v in sorted(candidates_in_train):
+            reasons = []
+            if v in valency["unacc_only"]:
+                reasons.append("unacc_only")
+            if v in passive_verbs and v not in active_verbs:
+                reasons.append("passive_only")
+            if v in active_verbs and v not in passive_verbs:
+                reasons.append("active_only")
+            # Count impact across gen
+            impact = sum(gen_by_cat[c].get(v, 0) for c in categories_to_show)
+            print(f"  {v:20s}  impact={impact:4d} examples  reasons={reasons}")
