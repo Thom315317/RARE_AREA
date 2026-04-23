@@ -1065,10 +1065,13 @@ def generate_cp_recursion_extension(train_pairs, max_aug=500):
 
 
 # Verbs known to be missed by build_verb_form_maps (they appear in train only
-# as passives without by-phrase → no `.agent` in LF → invisible to the .agent-based
-# extractor). These are force-added using regular -ed morphology. Expand this list
-# if diagnose_a2p_coverage.py reveals other missed verbs.
-FORCED_REGULAR_VERBS_FOR_POOL = ["squeeze"]
+# in positions that yield no `.agent` predicate — passives without by-phrase,
+# or pure unaccusatives — so they're invisible to the .agent-based extractor).
+# These are force-added using regular -ed morphology. Expand this list if
+# diagnose_a2p_coverage.py reveals other missed verbs.
+# - squeeze: appears only in passives without by-phrase in train
+# - shatter: appears only in unaccusative form "The X shattered" in train
+FORCED_REGULAR_VERBS_FOR_POOL = ["squeeze", "shatter"]
 
 
 def _regular_past_form(lemma):
