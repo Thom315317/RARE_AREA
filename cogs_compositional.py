@@ -214,6 +214,109 @@ def generate_pp_recursion_extension(train_pairs, max_aug=500):
     return deduped
 
 
+def generate_wh_passive_examples(train_pairs, n=None, seed=42):
+    """Convert simple declarative passives with by-phrase into wh-questions:
+      'The X was V-ed by Y .'  →  'What was V-ed by Y ?'
+      with LF:   V.theme(x_2, ?) AND V.agent(x_2, <agent_filler>)
+
+    Also handles the wh-on-agent variant:
+      'A X was V-ed by Y .'  →  'Who V-ed a X ?'  (skipped here for simplicity
+                                 since the direction Who-V is already covered
+                                 by Q_subj_active in SLOG train)
+
+    The wh-trace is the token `?` in COGS/SLOG LF syntax. Positions in the
+    produced input:  What(0) was(1) V-ed(2) by(3) <agent_np>(4..)  ?(last).
+    """
+    rng = random.Random(seed)
+    results = []
+    for inp, lf, _ in train_pairs:
+        toks = inp.split()
+        if not toks or toks[-1] != ".":
+            continue
+        if "was" not in toks or "by" not in toks:
+            continue
+        # Exclude datives / ccomp / nmod for a clean conversion
+        if ". recipient" in lf or ". ccomp" in lf or ". nmod" in lf \
+                or ". xcomp" in lf:
+            continue
+
+        try:
+            was_idx = toks.index("was")
+            by_idx = toks.index("by")
+        except ValueError:
+            continue
+        if by_idx != was_idx + 2:
+            continue  # skip "was Xed by" with extra tokens (to Y, in Z, …)
+
+        pp_word = toks[was_idx + 1]
+        agent_np = toks[by_idx + 1:-1]   # between "by" and "."
+        if not agent_np:
+            continue
+
+        # Identify verb lemma from LF
+        lf_toks = lf.split()
+        verb_lemma = None
+        for j in range(len(lf_toks) - 2):
+            if lf_toks[j + 1] == "." and lf_toks[j + 2] in ("agent", "theme"):
+                verb_lemma = lf_toks[j]
+                break
+        if verb_lemma is None:
+            continue
+
+        # Classify agent NP (proper, indef common, def common)
+        if len(agent_np) == 1 and agent_np[0] and agent_np[0][0].isupper() \
+                and agent_np[0] not in ("The", "A") and agent_np[0].isalpha():
+            agent_kind = "proper"
+            agent_noun_word = agent_np[0]
+        elif len(agent_np) == 2 and agent_np[0] in ("a", "A", "the", "The") \
+                and agent_np[1].isalpha() and agent_np[1][0].islower():
+            agent_kind = "the" if agent_np[0].lower() == "the" else "a"
+            agent_noun_word = agent_np[1]
+        else:
+            continue
+
+        # Build new tokens: What / was / pp_word / by / <agent_np> / ?
+        new_tokens = ["What", "was", pp_word, "by"] + list(agent_np) + ["?"]
+        new_inp = " ".join(new_tokens)
+
+        # Positions in new_tokens:
+        #   What=0, was=1, pp_word=2, by=3, agent_np starts at 4
+        verb_event_pos = 2
+        # Agent filler position (for common nouns): determiner at 4, noun at 5.
+        if agent_kind == "proper":
+            agent_filler = agent_np[0]            # proper name constant
+            # Build LF directly
+            new_lf = (f"{verb_lemma} . theme ( x _ {verb_event_pos} , ? ) "
+                      f"AND {verb_lemma} . agent ( x _ {verb_event_pos} , {agent_filler} )")
+        else:
+            agent_noun_pos = 5                     # noun token position
+            if agent_kind == "the":
+                # Definite → presupposition at the start
+                new_lf = (f"* {agent_noun_word} ( x _ {agent_noun_pos} ) ; "
+                          f"{verb_lemma} . theme ( x _ {verb_event_pos} , ? ) "
+                          f"AND {verb_lemma} . agent ( x _ {verb_event_pos} , "
+                          f"x _ {agent_noun_pos} )")
+            else:
+                # Indefinite → noun predicate in body
+                new_lf = (f"{verb_lemma} . theme ( x _ {verb_event_pos} , ? ) "
+                          f"AND {verb_lemma} . agent ( x _ {verb_event_pos} , "
+                          f"x _ {agent_noun_pos} ) "
+                          f"AND {agent_noun_word} ( x _ {agent_noun_pos} )")
+        results.append((new_inp, new_lf, "aug_wh_passive"))
+
+    # Dedupe
+    seen = set()
+    unique = []
+    for item in results:
+        if item[0] not in seen:
+            seen.add(item[0])
+            unique.append(item)
+    rng.shuffle(unique)
+    if n is not None and n > 0 and len(unique) > n:
+        unique = unique[:n]
+    return unique
+
+
 def generate_cp_recursion_extension(train_pairs, max_aug=500):
     """Extend CP embedding by 1 level. Wraps sentence in 'NAME VERBed that ...'.
 
@@ -1064,14 +1167,25 @@ def generate_cp_recursion_extension(train_pairs, max_aug=500):
     return deduped[:max_aug]
 
 
-# Verbs known to be missed by build_verb_form_maps (they appear in train only
-# in positions that yield no `.agent` predicate — passives without by-phrase,
-# or pure unaccusatives — so they're invisible to the .agent-based extractor).
-# These are force-added using regular -ed morphology. Expand this list if
-# diagnose_a2p_coverage.py reveals other missed verbs.
-# - squeeze: appears only in passives without by-phrase in train
-# - shatter: appears only in unaccusative form "The X shattered" in train
-FORCED_REGULAR_VERBS_FOR_POOL = ["squeeze", "shatter"]
+# Verbs that need to be present in the permutation pool with both roles
+# (agent AND theme) even though the raw extractor may miss them:
+#   - either they appear in train only as .theme-only (no .agent extractable)
+#   - or they appear in train only transitively, but the gen test uses them
+#     as unaccusatives (wh-questions "Who shortened ?" → shorten.theme(x_1, ?))
+# Force-added with regular -ed morphology. A no-op if already in both maps
+# after normal extraction + fallback. Extend from diagnose_a2p_coverage.py.
+# COGS baseline:
+#   - squeeze: passives without by-phrase in train
+#   - shatter: unaccusative only in train
+# SLOG adds verbs tested as unaccusatives in Q_subj_active even though
+# transitive in train (shorten, float), plus other alternating-unaccusatives
+# seen in the gen diagnostic:
+FORCED_REGULAR_VERBS_FOR_POOL = [
+    "squeeze", "shatter",                    # COGS originals
+    "shorten", "float",                      # SLOG Q_subj_active unaccusatives
+    "freeze", "melt", "break", "collapse",   # common alternators (no-op if already covered)
+    "improve", "bounce", "roll",             # optional safety net
+]
 
 
 def _regular_past_form(lemma):
@@ -2434,6 +2548,18 @@ def train_one_run(variant: str, seed: int, args):
             total_k += len(pp_next)
         print(f"  Total peel-stack augmentation: {total_k}")
 
+    # Wh-passive augmentation (generate "What was V-ed by Y ?" from declarative passives)
+    if getattr(args, "wh_passive_aug", False):
+        wh_n = getattr(args, "wh_passive_n", 0)
+        wh_examples = generate_wh_passive_examples(
+            train_pairs, n=(wh_n if wh_n > 0 else None), seed=seed)
+        print(f"WH-PASSIVE augmentation ON: +{len(wh_examples)} examples "
+              f"(cap={wh_n if wh_n > 0 else 'none'})")
+        for i, (a, l, _t) in enumerate(wh_examples[:3]):
+            print(f"  whp{i}: {a}")
+            print(f"         {l[:130]}...")
+        train_pairs = train_pairs + wh_examples
+
     # CP recursion peel (same cascade logic as PP peel, but for clausal complements)
     if getattr(args, "peel_cp", False):
         cp_depth = getattr(args, "peel_cp_depth", 3)
@@ -3210,6 +3336,10 @@ def build_arg_parser(description="COGS compositional generalization"):
                    help="CP recursion peel: wrap depth-N ccomp examples in an extra 'NAME V that …' layer. Cascade count controlled by --peel-cp-depth.")
     p.add_argument("--peel-cp-depth", type=int, default=3,
                    help="Number of cascade iterations for --peel-cp (default 3 → clause depths up to 3+original).")
+    p.add_argument("--wh-passive-aug", action="store_true",
+                   help="Augment train with wh-questions on passives: 'The X was V-ed by Y .' → 'What was V-ed by Y ?' with ? in theme position.")
+    p.add_argument("--wh-passive-n", type=int, default=0,
+                   help="Cap number of wh-passive examples (0 = all derivable)")
     p.add_argument("--contrastive-errors", action="store_true",
                    help="Innovation C: per-token margin loss pushing gold above top-1 competitor (lambda=0.2, margin=1.0)")
     p.add_argument("--constrained-beam", action="store_true",
