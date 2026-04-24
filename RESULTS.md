@@ -606,6 +606,51 @@ Config : B4 + copy + peel10 + peel-cp10 + permute-verbs + wh-passive-aug + unacc
 
 **Catégories encore à 0% :** CP_5-12, PP_5-12, center_embed_3, center_embed_5-12, RC_iobj_extracted, RC_modif_subj. Le peel depth=10 ne suffit pas pour les 5-12 profondeurs (le modèle mémorise les profondeurs vues). center_embed et RC nécessitent des générateurs dédiés (pas implémentés).
 
+### Test de transfert pool filtré SLOG → COGS (seed 42)
+
+**Question :** le mécanisme de filtrage du pool de permutation qui gagne +1.6 sur SLOG transfère-t-il à COGS ?
+
+**Protocole :** deux runs COGS B4+copy+peel+permute-verbs, seed 42, 60 epochs.
+- **Config A (baseline)** : pool complet (130 verbes, avec force-add de shatter/squeeze/shorten/float)
+- **Config B (pool filtré)** : même config + `--filter-unaccusative-from-pool` (retire les 10 verbes `break, burn, collapse, disintegrate, float, freeze, grow, roll, shatter, shorten`)
+
+**Résultat agrégé :**
+
+| Config | Gen greedy | Dev greedy |
+|---|---|---|
+| A — baseline | 81.35% | 99.10% |
+| B — pool filtré | 79.03% | 99.10% |
+
+**Delta B − A : −2.32 points → transfert INVERSÉ selon la grille du spec.**
+
+**Décomposition par catégorie (extraits triés par delta) :**
+
+| Catégorie | A | B | Delta |
+|---|---|---|---|
+| only_seen_as_unacc_subj_as_unerg_subj | 66.80% | **93.20%** | **+26.40** |
+| only_seen_as_unacc_subj_as_obj_omitted_transitive_subj | 72.70% | **92.00%** | **+19.30** |
+| obj_pp_to_subj_pp | 41.00% | 45.90% | +4.90 |
+| prim_to_inf_arg | 96.00% | 98.40% | +2.40 |
+| subj_to_obj_proper | 64.50% | 65.20% | +0.70 |
+| cp_recursion | 5.20% | 4.80% | -0.40 |
+| pp_dative_to_do_dative | 99.10% | 98.60% | -0.50 |
+| prim_to_obj_proper | 65.70% | 64.40% | -1.30 |
+| **unacc_to_transitive** | **99.60%** | **0.00%** | **−99.60** |
+
+**Interprétation : deux effets antagonistes coexistent sur COGS.**
+
+1. **Nettoyage distributionnel (gain)** : le mécanisme diagnostiqué sur SLOG opère aussi ici. Retirer les verbes unaccusatifs du pool évite que la permutation les mélange avec des verbes transitifs, ce qui contaminait les catégories `only_seen_as_unacc_subj_*` (+20 à +26 pts) et quelques autres (`obj_pp_to_subj_pp`, `prim_to_inf_arg`).
+
+2. **Perte de capacité transitive forcée (coût)** : la catégorie `unacc_to_transitive` avait été débloquée à 99.6% précisément parce que `FORCED_REGULAR_VERBS_FOR_POOL` ajoute shatter au pool (→ permutation lui apprend la structure transitive). Filtrer shatter **annule** cet effet → retour à 0%.
+
+**Le test impossible :** SLOG teste l'usage unaccusatif (d'où le filtrage aide), COGS teste l'usage transitif de verbes unaccusatifs en train (d'où le filtrage nuit). **Les deux benchmarks testent des directions opposées du même phénomène lexical-sémantique.** Le pool par défaut (avec force-add de shatter/squeeze/shorten/float) est optimisé pour COGS.
+
+**Implication méthodologique :** le filtrage est un paramètre **benchmark-dépendant**, pas un "nettoyage universel". Sur SLOG la direction filtrée est bonne. Sur COGS elle est mauvaise. Le papier doit présenter les deux résultats honnêtement : un même réglage ne gagne pas sur les deux benchmarks.
+
+**Verdict selon spec §6 :**
+- Delta = −2.32 pts < −0.5 → **Transfert inversé**
+- Action : documenter le résultat négatif. Le finding SLOG reste valable dans son domaine. Ne pas engager de sweep 3-seed COGS : le signal est clair sur 1 seed car porté par le basculement catégoriel binaire `unacc_to_transitive` 99.6% → 0%.
+
 ### SLOG surprise × entropy analysis
 
 | Type | Categories | Example gap acc | Action |
