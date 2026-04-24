@@ -2436,9 +2436,15 @@ def evaluate(model, loader, out_w2i, device, max_len=MAX_DECODE,
 
 
 def train_one_run(variant: str, seed: int, args):
-    torch.manual_seed(seed); random.seed(seed); np.random.seed(seed)
+    # Strict seeding for reproducibility across sweeps (spec: 7 calls).
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
     if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_dir = args.runs_dir if args.runs_dir else RUNS_DIR

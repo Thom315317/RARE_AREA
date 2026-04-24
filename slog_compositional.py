@@ -238,8 +238,11 @@ def _patched_build_verb_perm_pool(train_pairs, in_w2i, out_w2i,
         n_before = len(pool)
         n_after = len(new_pool)
         _UNACC_REMOVED_FROM_PERM = removed_lemmas
-        print("VERB PERMUTATION pool adjusted:")
-        print(f"  removed from pool (unaccusative): {removed_lemmas}")
+        if _UNACC_INJECT:
+            print("VERB PERMUTATION pool adjusted (full unaccusative patch):")
+        else:
+            print("POOL FILTERING ON (no aug):")
+        print(f"  removed from permutation pool: {removed_lemmas}")
         print(f"  new pool size: {n_after} (was {n_before})")
         stats["pool_size"] = n_after
         stats["unaccusative_removed"] = n_before - n_after
@@ -469,15 +472,20 @@ if __name__ == "__main__":
                    help="Full patch: inject 300 unaccusative examples AND remove unaccusative verbs from permutation pool.")
     p.add_argument("--unaccusative-pool-only", action="store_true",
                    help="Control: remove unaccusative verbs from permutation pool WITHOUT injecting the 300 examples. Isolates the pool-change effect.")
+    p.add_argument("--filter-unaccusative-from-pool", action="store_true",
+                   help="Canonical name (sweep spec) — equivalent to --unaccusative-pool-only. Removes unaccusative verbs from the permutation pool without injection.")
     p.add_argument("--unaccusative-count", type=int, default=300,
                    help="Number of unaccusative examples to inject (default 300).")
     args = p.parse_args()
     args._bench_name = "SLOG"
 
     # Wire the runtime flags used by the monkey-patches.
-    # --unaccusative-aug turns both knobs on; --unaccusative-pool-only turns only the pool exclusion on.
+    # --unaccusative-aug turns both knobs on; --unaccusative-pool-only (legacy name)
+    # or --filter-unaccusative-from-pool (canonical, sweep spec) turn only the
+    # pool exclusion on. All three names are compatible and additive.
     full_on = bool(getattr(args, "unaccusative_aug", False))
-    pool_only = bool(getattr(args, "unaccusative_pool_only", False))
+    pool_only = (bool(getattr(args, "unaccusative_pool_only", False))
+                 or bool(getattr(args, "filter_unaccusative_from_pool", False)))
     _UNACC_INJECT = full_on
     _UNACC_POOL_EXCLUDE = full_on or pool_only
     _UNACC_COUNT = int(getattr(args, "unaccusative_count", 300))
