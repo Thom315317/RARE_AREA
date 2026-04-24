@@ -549,9 +549,62 @@ Loop iterates: measure surprise → cluster → diagnose → fix → retrain.
 | B1 | ~14% | Proper name permutation |
 | B4 | 19.18% | B1 + B3_auto |
 | Auto (pp_on_subject only) | 19.47% | Q_iobj regresses 79→48% |
+| B4 + copy + peel10 + peel-cp + permute-verbs | ~20.26% | Transposition COGS directe — échec |
+| + wh-passive-aug | ~28.56% | Gain massif sur Q_subj_passive |
+| + **unaccusative-aug** (inject+pool-exclude) | **31.29%** | Voir section dédiée |
+| + **unaccusative-pool-only** (control) | **30.14%** | Décomposition : le pool fait le plus gros |
 
-SLOG gen categories that work (>50%): Q_subj_active (94.7%), Q_iobj_ditransV (79.1%), PP_3 (62.3%).
-Categories at 0%: CP_5-12, PP_5-12, center_embed (3 and 5-12), RC_iobj_extracted, RC_modif_subj, Q_long_mv, Q_dobj_ditransV.
+### Patch unaccusatif — Scénario C (décomposition instructive)
+
+Config : B4 + copy + peel10 + peel-cp10 + permute-verbs + wh-passive-aug + unaccusative. Seed 42, 60 epochs.
+
+**Hypothèse initiale (spec Julien) :** Q_subj_active plafonne à 87.7% parce que le modèle sur-généralise `.agent` pour les verbes unaccusatifs (Who shortened ? → .agent au lieu de .theme). Injecter 300 exemples unaccusatifs devrait fixer ces 3% d'erreurs.
+
+**Implémentation :** flag `--unaccusative-aug` (injection + exclusion du pool de permutation) et flag `--unaccusative-pool-only` (control : exclusion seule, sans injection). Liste de 16 unaccusatifs (10 utilisables dans le vocab SLOG : shorten, float, collapse, disintegrate, shatter, freeze, burn, grow, break, roll).
+
+**Résultats comparés** (baseline = run précédent peel10+whpassive à 28.56%) :
+
+| Catégorie | Baseline | Pool-only (control) | Full patch | Δ injection |
+|---|---|---|---|---|
+| Gen global | 28.56% | 30.14% (+1.58) | 31.29% (+2.73) | +1.15 |
+| Q_subj_active (cible) | 87.70% | **91.20%** (+3.50) | 88.70% (+1.00) | **-2.50** |
+| Q_subj_passive | 99.50% | 97.40% (-2.10) | 95.60% (-3.90) | -1.80 |
+| **Q_long_mv** | ~0% | 16.90% (+16.9) | **64.30%** (+64.3) | **+47.4** |
+| Q_iobj_ditransV | 12.70% | 50.30% (+37.6) | 50.30% (+37.6) | 0.00 |
+| Q_dobj_ditransV | 0% | 11.00% (+11.0) | 0% | -11.00 |
+| Q_modified_NPs | 10.80% | 20.90% (+10.1) | 17.30% (+6.5) | -3.60 |
+| PP_modif_iobj | 29.80% | 31.80% (+2.0) | 20.30% (-9.5) | -11.50 |
+| RC_modif_iobj | 32.20% | 28.40% (-3.8) | 25.60% (-6.6) | -2.80 |
+| **Targeted check (10 témoins)** | 7/10 | **10/10** | 9/10 | -1/10 |
+
+**Finding #1 — le pool BAT l'injection sur la cible** : le pool-only corrige mieux `Q_subj_active` (+3.50 vs +1.00), avec 10/10 corrects sur les témoins vs 9/10 avec l'injection.
+
+**Finding #2 — mécanisme du pool-only** : quand les verbes unaccusatifs (shorten, float, shatter, etc.) sont dans le pool de permutation, la permutation les échange avec des verbes transitifs. Ça crée des **incohérences distributionnelles** : "The cat blessed" via permutation depuis "The cat shattered" produit une LF `bless.theme` sans `bless.agent`, ce qui contredit la distribution normale de bless. Le modèle se brouille sur TOUS les verbes ainsi affectés. Retirer les unaccusatifs du pool nettoie la distribution → chaque verbe garde son pattern naturel.
+
+**Finding #3 — l'injection apporte Q_long_mv** : +47.4 pts spécifiquement sur long-movement questions. L'injection enseigne le binding `wh → theme` qui se transfère aux wh-questions longues. Les 300 exemples `Who V-ed ? → V.theme(x_1, ?)` agissent comme une démonstration de la liaison wh-trace/position thématique.
+
+**Finding #4 — l'injection cause des régressions** : PP_modif_iobj -9.5, RC_modif_iobj -2.8, Q_dobj_ditransV -11 (passe à 0% depuis 11%). Le modèle sur-généralise "theme = wh-trace" et déstabilise les structures déclaratives à theme.
+
+**Verdict :**
+- L'hypothèse de Julien (fix Q_subj_active via injection) est **partiellement correcte**, mais pour la **mauvaise raison**
+- Le vrai effet est **la pollution du pool de permutation par les unaccusatifs** — retirer suffit pour la cible, avec zéro régression
+- L'injection est utile uniquement pour **les wh-questions longues** (Q_long_mv, Q_dobj_ditransV); son coût ailleurs est réel
+
+**Pool utilisé :** 10 verbes utilisables sur 16 (6 skippés pour vocab mismatch : sink, melt, shrink, rise, fall, open). Pool de permutation réduit de 130 → 120.
+
+**Meilleure configuration observée pour SLOG** : pool-only (30.14% greedy), sans régression notable et avec 10/10 sur le targeted check. Le full patch est légèrement meilleur globalement (31.29%) mais avec des coûts non négligeables sur PP/RC.
+
+### Bilan SLOG
+
+| Config | Gen greedy | Notes |
+|---|---|---|
+| B0 baseline | 20.62% | train déjà avec PP |
+| B4 + permute + peel10 + peel-cp | 20.26% | transposition COGS ne suffit pas |
+| + wh-passive-aug | 28.56% | Q_subj_passive débloqué |
+| **+ unaccusative-pool-only** | **30.14%** | nettoyage pool, pas de régression |
+| + full unaccusative (inject + pool) | 31.29% | Q_long_mv massif mais régressions PP/RC |
+
+**Catégories encore à 0% :** CP_5-12, PP_5-12, center_embed_3, center_embed_5-12, RC_iobj_extracted, RC_modif_subj. Le peel depth=10 ne suffit pas pour les 5-12 profondeurs (le modèle mémorise les profondeurs vues). center_embed et RC nécessitent des générateurs dédiés (pas implémentés).
 
 ### SLOG surprise × entropy analysis
 
