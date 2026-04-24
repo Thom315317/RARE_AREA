@@ -20,6 +20,7 @@ data/scan_compositional/
 # Runs — don't push heavy artifacts or incomplete sweeps
 runs/
 runs_innov/
+runs_innov_slog/
 runs_master/*/checkpoint.pt
 runs_master/*/model_*.pt
 runs_pub/
