@@ -1187,6 +1187,18 @@ FORCED_REGULAR_VERBS_FOR_POOL = [
     "improve", "bounce", "roll",             # optional safety net
 ]
 
+# SLOG-derived list of unaccusative-class verbs to OPTIONALLY remove from the
+# permutation pool (transfer test, see PROMPT_TRANSFER_COGS.md). The 10 verbs
+# below are exactly those that the SLOG sweep filtered out and that improved
+# SLOG gen greedy by ≈+1.6 points. The COGS run does an extra vocab check
+# at runtime: a verb is only removed if its lemma is in the OUTPUT vocab AND
+# it is currently in the freshly-built permutation pool — otherwise it's
+# silently skipped and reported in pool_used.txt.
+SLOG_UNACCUSATIVE_FILTERED = [
+    "break", "burn", "collapse", "disintegrate", "float",
+    "freeze", "grow", "roll", "shatter", "shorten",
+]
+
 
 def _regular_past_form(lemma):
     """Regular past/past-participle from lemma. e-final → +d, else +ed."""
@@ -1195,7 +1207,8 @@ def _regular_past_form(lemma):
     return lemma + "ed"
 
 
-def build_verb_perm_pool(train_pairs, in_w2i, out_w2i, morphology_fallback=True):
+def build_verb_perm_pool(train_pairs, in_w2i, out_w2i, morphology_fallback=True,
+                          filter_unaccusative=False):
     """Return a list of (past_in_id, pp_in_id, lemma_out_id) triples for every
     transitive verb that has both a past-tense and a past-participle form available
     (with optional morphological fallback for regular verbs).
@@ -1203,6 +1216,10 @@ def build_verb_perm_pool(train_pairs, in_w2i, out_w2i, morphology_fallback=True)
     This pool is passed to COGSDataset for A4-style verb permutation: each batch,
     a random bijection on the pool is applied to both src (inflected forms) and
     tgt (lemmas). Analog of SCAN's A4_permute on {walk, run, look, jump}.
+
+    If `filter_unaccusative=True`, also remove the SLOG-derived list of
+    unaccusative verbs from the pool (see SLOG_UNACCUSATIVE_FILTERED). Returns
+    extra info under stats["unaccusative_*"] for pool_used.txt.
     """
     pt_map, pp_map = build_verb_form_maps(train_pairs)
     pt_map = dict(pt_map)
@@ -1242,12 +1259,52 @@ def build_verb_perm_pool(train_pairs, in_w2i, out_w2i, morphology_fallback=True)
             missing_outv += 1
             continue
         pool.append((past_id, pp_id, lemma_id))
+
+    # Optional: filter out SLOG-derived unaccusative verbs (transfer test).
+    # Keep track of what was checked, kept, and skipped for pool_used.txt.
+    unacc_checked = []
+    unacc_removed = []
+    unacc_skipped = []
+    if filter_unaccusative:
+        removed_ids = set()
+        for lemma in SLOG_UNACCUSATIVE_FILTERED:
+            unacc_checked.append(lemma)
+            lemma_id = out_w2i.get(lemma)
+            if lemma_id is None:
+                unacc_skipped.append((lemma, "lemma not in output vocab"))
+                continue
+            present = any(l == lemma_id for (_p, _pp, l) in pool)
+            if not present:
+                unacc_skipped.append((lemma, "not currently in permutation pool"))
+                continue
+            removed_ids.add(lemma_id)
+            unacc_removed.append(lemma)
+        if removed_ids:
+            before = len(pool)
+            pool = [t for t in pool if t[2] not in removed_ids]
+            after = len(pool)
+            print("POOL FILTERING ON (COGS):")
+            print(f"  candidates checked: {unacc_checked}")
+            print(f"  effectively removed from pool: {unacc_removed}")
+            if unacc_skipped:
+                print(f"  skipped ({len(unacc_skipped)}):")
+                for lemma, reason in unacc_skipped:
+                    print(f"    {lemma}: {reason}")
+            print(f"  new pool size: {after} (was {before})")
+            if len(unacc_removed) < 5:
+                print(f"  WARNING: only {len(unacc_removed)} verbs removed (<5). "
+                      "Transfer test is underpowered — consider stopping.")
+
     stats = {"pool_size": len(pool),
              "skipped_missing_form": skipped_missing_form,
              "missing_input_vocab": missing_inv,
              "missing_output_vocab": missing_outv,
              "pt_map_size": len(pt_map), "pp_map_size": len(pp_map),
-             "n_forced_regular_added": n_forced}
+             "n_forced_regular_added": n_forced,
+             "unaccusative_checked": unacc_checked,
+             "unaccusative_removed": unacc_removed,
+             "unaccusative_skipped": unacc_skipped,
+             "filter_unaccusative_active": bool(filter_unaccusative)}
     return pool, stats
 
 
@@ -2764,8 +2821,23 @@ def train_one_run(variant: str, seed: int, args):
     verb_perm_pool = None
     verb_perm_prob = getattr(args, "permute_verbs_prob", 0.5)
     if getattr(args, "permute_verbs", False):
+        filter_unacc = getattr(args, "filter_unaccusative_from_pool", False)
         verb_perm_pool, vpp_stats = build_verb_perm_pool(
-            train_pairs, in_w2i, out_w2i, morphology_fallback=True)
+            train_pairs, in_w2i, out_w2i, morphology_fallback=True,
+            filter_unaccusative=filter_unacc)
+        # Write pool_used.txt for transfer-test bookkeeping (spec §7)
+        if filter_unacc:
+            pool_used_path = os.path.join(run_dir, "pool_used.txt")
+            with open(pool_used_path, "w") as f:
+                f.write("=== Unaccusative filter (COGS transfer test) ===\n")
+                f.write(f"checked: {vpp_stats['unaccusative_checked']}\n")
+                f.write(f"removed from pool: {vpp_stats['unaccusative_removed']}\n")
+                f.write("skipped:\n")
+                for lemma, reason in vpp_stats['unaccusative_skipped']:
+                    f.write(f"  {lemma}: {reason}\n")
+                f.write(f"\nPool size after filtering: {vpp_stats['pool_size']}\n")
+                f.write(f"n_forced_regular_added: {vpp_stats['n_forced_regular_added']}\n")
+            print(f"  wrote {pool_used_path}")
         print(f"VERB PERMUTATION ON: pool size={vpp_stats['pool_size']} verbs  "
               f"(pt_map={vpp_stats['pt_map_size']}, pp_map={vpp_stats['pp_map_size']}, "
               f"forced={vpp_stats.get('n_forced_regular_added', 0)}, "
@@ -3382,6 +3454,10 @@ def build_arg_parser(description="COGS compositional generalization"):
                    help="A4-style verb permutation: random bijection on transitive verbs applied per __getitem__ (prob 0.5). Shuffles verb identity while keeping structure.")
     p.add_argument("--permute-verbs-prob", type=float, default=0.5,
                    help="Probability per example of applying the verb permutation (default 0.5)")
+    p.add_argument("--filter-unaccusative-from-pool", action="store_true",
+                   help="Transfer test (COGS): remove the SLOG-derived list of unaccusative verbs "
+                        "(break, burn, collapse, disintegrate, float, freeze, grow, roll, shatter, shorten) "
+                        "from the permutation pool, with vocab check. Writes pool_used.txt to the run dir.")
     p.add_argument("--tfr-start", type=int, default=20,
                    help="Epoch at which scheduled sampling begins ramping TFR from 1.0→0.5 (copy only)")
     p.add_argument("--curriculum-passive-first", action="store_true",
