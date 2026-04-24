@@ -66,7 +66,8 @@ UNACCUSATIVE_VERBS = [
 ]
 
 # Runtime flags, set from args in __main__ before train_one_run is called
-_UNACC_ACTIVE = False
+_UNACC_INJECT = False        # inject the 300 unaccusative examples
+_UNACC_POOL_EXCLUDE = False  # remove unaccusative verbs from permutation pool
 _UNACC_COUNT = 300
 _UNACC_SEED = 42
 _UNACC_POOL_USED = []       # populated after generation (logged)
@@ -171,8 +172,8 @@ _orig_parse_cogs_tsv = cogs.parse_cogs_tsv
 def _patched_parse_cogs_tsv(path):
     global _UNACC_POOL_USED, _UNACC_POOL_SKIPPED
     pairs = _orig_parse_cogs_tsv(path)
-    # Inject only on the train file, only when the flag is on
-    if _UNACC_ACTIVE and "train" in os.path.basename(path):
+    # Inject only on the train file, only when injection is enabled
+    if _UNACC_INJECT and "train" in os.path.basename(path):
         valid, invalid, usable, skipped, per_tpl = _generate_unaccusative_examples(
             pairs, _UNACC_COUNT, _UNACC_SEED)
         _UNACC_POOL_USED = [u[2] for u in usable]
@@ -220,7 +221,7 @@ def _patched_build_verb_perm_pool(train_pairs, in_w2i, out_w2i,
     global _UNACC_REMOVED_FROM_PERM
     pool, stats = _orig_build_verb_perm_pool(train_pairs, in_w2i, out_w2i,
                                               morphology_fallback)
-    if _UNACC_ACTIVE:
+    if _UNACC_POOL_EXCLUDE:
         unacc_lemma_ids = {}
         for _pres, _past, lemma in UNACCUSATIVE_VERBS:
             lid = out_w2i.get(lemma)
@@ -465,14 +466,20 @@ if __name__ == "__main__":
     p = cogs.build_arg_parser(description="SLOG structural generalization")
     # SLOG-only additions:
     p.add_argument("--unaccusative-aug", action="store_true",
-                   help="Inject 300 unaccusative examples (Who V-ed ?, What V-ed ?, Name V-ed .) — requires SLOG's gen semantics.")
+                   help="Full patch: inject 300 unaccusative examples AND remove unaccusative verbs from permutation pool.")
+    p.add_argument("--unaccusative-pool-only", action="store_true",
+                   help="Control: remove unaccusative verbs from permutation pool WITHOUT injecting the 300 examples. Isolates the pool-change effect.")
     p.add_argument("--unaccusative-count", type=int, default=300,
                    help="Number of unaccusative examples to inject (default 300).")
     args = p.parse_args()
     args._bench_name = "SLOG"
 
-    # Wire the runtime flags used by the monkey-patches
-    _UNACC_ACTIVE = bool(getattr(args, "unaccusative_aug", False))
+    # Wire the runtime flags used by the monkey-patches.
+    # --unaccusative-aug turns both knobs on; --unaccusative-pool-only turns only the pool exclusion on.
+    full_on = bool(getattr(args, "unaccusative_aug", False))
+    pool_only = bool(getattr(args, "unaccusative_pool_only", False))
+    _UNACC_INJECT = full_on
+    _UNACC_POOL_EXCLUDE = full_on or pool_only
     _UNACC_COUNT = int(getattr(args, "unaccusative_count", 300))
     _UNACC_SEED = int(args.seed)
 
@@ -482,8 +489,9 @@ if __name__ == "__main__":
 
     summary = cogs.train_one_run(args.variant, args.seed, args)
 
-    # Post-analysis — only when the unaccusative flag is on (main purpose of this wrapper extension)
-    if _UNACC_ACTIVE and summary is not None:
+    # Post-analysis — for the full patch AND the pool-only control, so we can
+    # compare both runs against the same baseline with one script path.
+    if (_UNACC_INJECT or _UNACC_POOL_EXCLUDE) and summary is not None:
         patch_run_dir = summary.get("run_dir")
         if patch_run_dir and os.path.isdir(patch_run_dir):
             print("\n=== Post-training analysis ===")
