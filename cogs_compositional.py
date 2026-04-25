@@ -1698,12 +1698,43 @@ class CrossAttnDecoderLayer(nn.Module):
         return x
 
 
+class JEPAPredictor(nn.Module):
+    """Predicts encoder representation at position t+1 from position t.
+    Lightweight MLP: d_model → d_model → d_model. Stop-gradient on the target
+    so the predictor must learn the prediction without collapsing both sides.
+    """
+    def __init__(self, d_model=128):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Linear(d_model, d_model),
+        )
+
+    def forward(self, enc_out):
+        # enc_out: (B, T, d_model). Predict t+1 from t.
+        pred = self.net(enc_out[:, :-1])
+        target = enc_out[:, 1:].detach()  # stop-gradient
+        return pred, target
+
+
+def _jepa_loss(pred, target, src_mask):
+    """Mean squared error between (predicted, target) representations,
+    masked by valid input positions and normalised by the d_model dimension.
+    src_mask : (B, T) boolean True where token is real."""
+    # pred / target shape: (B, T-1, d_model). Mask is on positions [1:].
+    mask = src_mask[:, 1:].unsqueeze(-1).float()
+    sq = (pred - target) ** 2
+    denom = mask.sum().clamp(min=1.0) * pred.size(-1)
+    return (sq * mask).sum() / denom
+
+
 class TransformerSeq2Seq(nn.Module):
     """Encoder 2 layers + Decoder 2 layers, d=128, 4 heads. Pre-LN."""
 
     def __init__(self, in_vocab, out_vocab, d_model=128, n_heads=4,
                  n_layers=2, ffn=256, dropout=0.1,
-                 max_in=MAX_IN, max_out=MAX_OUT):
+                 max_in=MAX_IN, max_out=MAX_OUT, use_jepa=False):
         super().__init__()
         self.d_model = d_model
         self.in_emb  = nn.Embedding(in_vocab,  d_model, padding_idx=0)
@@ -1721,6 +1752,10 @@ class TransformerSeq2Seq(nn.Module):
         self.dec_norm = nn.LayerNorm(d_model)
         self.out_head = nn.Linear(d_model, out_vocab)
         self.max_in, self.max_out = max_in, max_out
+        # Optional JEPA predictor (Phase A integration)
+        self.use_jepa = use_jepa
+        if use_jepa:
+            self.jepa_predictor = JEPAPredictor(d_model)
 
     def encode(self, src, src_mask):
         L = src.size(1)
@@ -1762,9 +1797,9 @@ class TransformerSeq2SeqWithCopy(TransformerSeq2Seq):
 
     def __init__(self, in_vocab, out_vocab, d_model=128, n_heads=4, n_layers=2,
                  ffn=256, dropout=0.1, max_in=MAX_IN, max_out=MAX_OUT,
-                 in_to_out_map=None):
+                 in_to_out_map=None, use_jepa=False):
         super().__init__(in_vocab, out_vocab, d_model, n_heads, n_layers,
-                         ffn, dropout, max_in, max_out)
+                         ffn, dropout, max_in, max_out, use_jepa=use_jepa)
         self.copy_gate = nn.Linear(d_model, 1)
         if in_to_out_map is None:
             in_to_out_map = torch.full((in_vocab,), -1, dtype=torch.long)
@@ -1956,9 +1991,11 @@ class TransformerSeq2SeqCopyTags(TransformerSeq2SeqWithCopy):
     """
     def __init__(self, in_vocab, out_vocab, d_model=128, n_heads=4, n_layers=2,
                  ffn=256, dropout=0.1, max_in=MAX_IN, max_out=MAX_OUT,
-                 in_to_out_map=None, role_dim=16, token_categories=None):
+                 in_to_out_map=None, role_dim=16, token_categories=None,
+                 use_jepa=False):
         super().__init__(in_vocab, out_vocab, d_model, n_heads, n_layers, ffn,
-                         dropout, max_in, max_out, in_to_out_map=in_to_out_map)
+                         dropout, max_in, max_out, in_to_out_map=in_to_out_map,
+                         use_jepa=use_jepa)
         self.tagger = nn.Linear(d_model, N_ROLES)
         self.role_emb = nn.Embedding(N_ROLES, role_dim)
         self.k_proj = nn.Linear(d_model + role_dim, d_model)
@@ -3006,6 +3043,7 @@ def train_one_run(variant: str, seed: int, args):
         mx_in = mx_out = mx
     use_copy = getattr(args, "copy", False)
     use_tags = getattr(args, "tags", False)
+    use_jepa = bool(getattr(args, "jepa", False))
     if use_tags:
         in_to_out = build_in_to_out_map(in_w2i, out_w2i)
         n_shared = (in_to_out >= 0).sum().item()
@@ -3018,7 +3056,8 @@ def train_one_run(variant: str, seed: int, args):
                                            ffn=args.ffn,
                                            max_in=mx_in, max_out=mx_out,
                                            in_to_out_map=in_to_out,
-                                           token_categories=token_cats).to(device)
+                                           token_categories=token_cats,
+                                           use_jepa=use_jepa).to(device)
         use_copy = True     # tags implies copy
     elif use_copy:
         in_to_out = build_in_to_out_map(in_w2i, out_w2i)
@@ -3030,14 +3069,19 @@ def train_one_run(variant: str, seed: int, args):
                                            n_layers=args.n_layers,
                                            ffn=args.ffn,
                                            max_in=mx_in, max_out=mx_out,
-                                           in_to_out_map=in_to_out).to(device)
+                                           in_to_out_map=in_to_out,
+                                           use_jepa=use_jepa).to(device)
     else:
         model = TransformerSeq2Seq(len(in_w2i), len(out_w2i),
                                    d_model=args.d_model,
                                    n_heads=args.n_heads,
                                    n_layers=args.n_layers,
                                    ffn=args.ffn,
-                                   max_in=mx_in, max_out=mx_out).to(device)
+                                   max_in=mx_in, max_out=mx_out,
+                                   use_jepa=use_jepa).to(device)
+    if use_jepa:
+        jl = float(getattr(args, "jepa_lambda", 0.1))
+        print(f"JEPA predictor ON: lambda={jl} (loss = task + lambda * jepa)")
     # Bidirectional: tie input/output embeddings (single embedding for unified vocab)
     if bidirectional:
         model.out_emb.weight = model.in_emb.weight
@@ -3078,10 +3122,32 @@ def train_one_run(variant: str, seed: int, args):
         print(f"SELECTIVE FORGETTING ON: mode={forget_mode} start@ep{forget_start} "
               f"cycle={forget_every}ep ({forget_duration}ep perturbed + {forget_every - forget_duration}ep clean)")
 
+    # Phase A.5 — JEPA trajectory sampling. Pick fixed subsets once, sample
+    # surprise every 5 epochs. Stratified by category on gen for the per-cat
+    # decomposition. Only active when use_jepa is True.
+    jepa_trajectory = []
+    jepa_train_sample_idx = None
+    jepa_gen_sample_idx_by_cat = None
+    if use_jepa:
+        rng_sample = random.Random(seed + 1)
+        jepa_train_sample_idx = rng_sample.sample(
+            range(len(tr_ds)), min(200, len(tr_ds)))
+        # Stratify gen by category: at most 200 examples total, evenly split
+        cat_to_idx = {}
+        for i in range(len(ge_ds)):
+            cat_to_idx.setdefault(ge_ds.cats[i], []).append(i)
+        n_cat = len(cat_to_idx)
+        per_cat = max(1, 200 // max(n_cat, 1))
+        jepa_gen_sample_idx_by_cat = {}
+        for cat, idxs in cat_to_idx.items():
+            sample_idxs = rng_sample.sample(idxs, min(per_cat, len(idxs)))
+            jepa_gen_sample_idx_by_cat[cat] = sample_idxs
+
     for ep in range(args.epochs):
         t_ep = time.time()
         model.train()
         tr_loss = 0.0; n_batches = 0
+        tr_jepa_loss = 0.0  # Phase A.5: per-epoch JEPA loss (averaged at log time)
 
         # Innovation B — warmup until forget_start, then cycles of `forget_duration` perturbed
         # epochs followed by `forget_every - forget_duration` clean epochs.
@@ -3210,6 +3276,19 @@ def train_one_run(variant: str, seed: int, args):
                                               reduction="none")
                     role_loss = (role_ce * role_mask.float()).sum() / role_mask.float().sum().clamp(min=1)
                     loss = loss + 0.3 * role_loss
+
+                # JEPA auxiliary loss (Phase A integration). Predictor sits on
+                # encoder output; loss is masked MSE between net(enc[:-1]) and
+                # detached enc[1:]. Adds args.jepa_lambda × jepa_loss to the
+                # main loss. Track jepa_loss for logging even if lambda=0.
+                jepa_loss_value = 0.0
+                if getattr(model, "use_jepa", False):
+                    enc_out = info.get("enc_out")
+                    if enc_out is not None:
+                        pred_j, target_j = model.jepa_predictor(enc_out)
+                        jepa_loss = _jepa_loss(pred_j, target_j, src_mask)
+                        loss = loss + float(getattr(args, "jepa_lambda", 0.1)) * jepa_loss
+                        jepa_loss_value = float(jepa_loss.detach().item())
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
             nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -3217,6 +3296,7 @@ def train_one_run(variant: str, seed: int, args):
             scaler.update()
             sched.step()
             tr_loss += loss.item(); n_batches += 1
+            tr_jepa_loss += jepa_loss_value
 
         dev_m = evaluate_tf(model, dv_ld, device)
         gen_m = evaluate_tf(model, ge_ld, device)
@@ -3232,7 +3312,50 @@ def train_one_run(variant: str, seed: int, args):
             "gen": gen_log,
             "lr": sched.get_last_lr()[0],
         }
+        if use_jepa:
+            entry["jepa_loss_train_avg"] = tr_jepa_loss / max(n_batches, 1)
         metrics_log.append(entry)
+
+        # Phase A.5 — sample JEPA surprise on fixed train + stratified gen subsets
+        # at ep 0, 5, 10, … and at the last epoch.
+        if use_jepa and (ep % 5 == 0 or ep == args.epochs - 1):
+            model.eval()
+            with torch.no_grad():
+                def _surprise_for_ds(ds, idxs):
+                    if not idxs:
+                        return None
+                    items = [ds[i] for i in idxs]
+                    src_b, src_m_b, tgt_b, _, _ = collate(items)
+                    src_b = src_b.to(device); src_m_b = src_m_b.to(device)
+                    enc = model.encode(src_b, src_m_b)
+                    pred_j, target_j = model.jepa_predictor(enc)
+                    sq = (pred_j - target_j) ** 2
+                    mask = src_m_b[:, 1:].unsqueeze(-1).float()
+                    denom = mask.sum().clamp(min=1.0) * pred_j.size(-1)
+                    return float(((sq * mask).sum() / denom).item())
+                tr_s = _surprise_for_ds(tr_ds, jepa_train_sample_idx)
+                gen_by_cat = {}
+                gen_all_pairs = []
+                for cat, idxs in jepa_gen_sample_idx_by_cat.items():
+                    s = _surprise_for_ds(ge_ds, idxs)
+                    if s is not None:
+                        gen_by_cat[cat] = s
+                        gen_all_pairs.append((cat, len(idxs), s))
+                # weighted mean across categories
+                if gen_all_pairs:
+                    total_n = sum(n for _c, n, _s in gen_all_pairs)
+                    gen_s = sum(s * n for _c, n, s in gen_all_pairs) / max(total_n, 1)
+                else:
+                    gen_s = None
+                jepa_trajectory.append({
+                    "epoch": ep,
+                    "train_surprise_sample_mean": tr_s,
+                    "gen_surprise_sample_mean": gen_s,
+                    "gen_surprise_by_category": gen_by_cat,
+                })
+                with open(os.path.join(run_dir, "jepa_trajectory.json"), "w") as f:
+                    json.dump(jepa_trajectory, f, indent=1)
+            model.train()
         with open(os.path.join(run_dir, "metrics.json"), "w") as f:
             json.dump(metrics_log, f, indent=1)
 
@@ -3250,7 +3373,8 @@ def train_one_run(variant: str, seed: int, args):
         eta_m, eta_sec = int(eta_s // 60), int(eta_s % 60)
         mark = "★" if is_best else " "
         tfr_str = f" tfr={tfr:.2f}" if use_copy and tfr < 1.0 else ""
-        print(f"E{ep:03d} {mark} loss={tr_loss/max(n_batches,1):.4f} "
+        jepa_str = f" jepa={tr_jepa_loss/max(n_batches,1):.4f}" if use_jepa else ""
+        print(f"E{ep:03d} {mark} loss={tr_loss/max(n_batches,1):.4f}{jepa_str} "
               f"dev_ex={dev_m['exact']:5.2f}% gen_ex={gen_m['exact']:5.2f}% "
               f"tok_g={gen_m['tok_acc']:5.2f}% lr={sched.get_last_lr()[0]:.2e}{tfr_str} "
               f"pat={patience} | {dt:.1f}s ETA {eta_m}m{eta_sec:02d}s")
@@ -3345,15 +3469,46 @@ def train_one_run(variant: str, seed: int, args):
         summary["constrained_beam_violations"] = constrained_gen.get("violations", {})
     with open(os.path.join(run_dir, "summary.json"), "w") as f:
         json.dump(summary, f, indent=2)
-    torch.save({"state_dict": model.state_dict(), "in_w2i": in_w2i,
-                "out_w2i": out_w2i, "variant": variant,
-                "d_model": args.d_model,
-                "n_layers": args.n_layers,
-                "n_heads": args.n_heads,
-                "ffn": args.ffn,
-                "max_in": model.max_in, "max_out": model.max_out,
-                "use_copy": use_copy, "use_tags": use_tags,
-               }, os.path.join(run_dir, "checkpoint.pt"))
+    ckpt_dict = {"state_dict": model.state_dict(), "in_w2i": in_w2i,
+                 "out_w2i": out_w2i, "variant": variant,
+                 "d_model": args.d_model,
+                 "n_layers": args.n_layers,
+                 "n_heads": args.n_heads,
+                 "ffn": args.ffn,
+                 "max_in": model.max_in, "max_out": model.max_out,
+                 "use_copy": use_copy, "use_tags": use_tags,
+                 "use_jepa": use_jepa}
+    if use_jepa:
+        ckpt_dict["jepa_state_dict"] = model.jepa_predictor.state_dict()
+        ckpt_dict["jepa_lambda"] = float(getattr(args, "jepa_lambda", 0.1))
+    torch.save(ckpt_dict, os.path.join(run_dir, "checkpoint.pt"))
+
+    # Phase A.5 — write jepa_curves.png if any trajectory was recorded
+    if use_jepa and jepa_trajectory:
+        try:
+            import matplotlib
+            matplotlib.use("Agg")
+            import matplotlib.pyplot as plt
+            xs = [e["epoch"] for e in jepa_trajectory]
+            ys_train = [e.get("train_surprise_sample_mean") for e in jepa_trajectory]
+            ys_gen = [e.get("gen_surprise_sample_mean") for e in jepa_trajectory]
+            fig, ax = plt.subplots(figsize=(8, 4.5))
+            if any(y is not None for y in ys_train):
+                ax.plot(xs, [y if y is not None else float("nan") for y in ys_train],
+                        label="train (200 sampled)", color="tab:blue")
+            if any(y is not None for y in ys_gen):
+                ax.plot(xs, [y if y is not None else float("nan") for y in ys_gen],
+                        label="gen (stratified 200)", color="tab:red")
+            ax.set_xlabel("Epoch")
+            ax.set_ylabel("JEPA surprise (mean MSE / d_model)")
+            ax.set_title("JEPA surprise trajectory")
+            ax.legend(); ax.grid(True, alpha=0.3)
+            fig.tight_layout()
+            fig.savefig(os.path.join(run_dir, "jepa_curves.png"), dpi=120)
+            plt.close(fig)
+            print(f"  wrote {os.path.join(run_dir, 'jepa_curves.png')}")
+        except Exception as e:
+            print(f"  jepa_curves.png skipped: {e}")
     print(f"\nFinished {bench_name} {variant}/s{seed}: "
           f"best_gen_tf={summary['best_gen_exact_tf']:.2f}%  "
           f"final_gen_greedy={summary['final_gen_exact_greedy']:.2f}%")
@@ -3458,6 +3613,10 @@ def build_arg_parser(description="COGS compositional generalization"):
                    help="Transfer test (COGS): remove the SLOG-derived list of unaccusative verbs "
                         "(break, burn, collapse, disintegrate, float, freeze, grow, roll, shatter, shorten) "
                         "from the permutation pool, with vocab check. Writes pool_used.txt to the run dir.")
+    p.add_argument("--jepa", action="store_true",
+                   help="Activate JEPA predictor during training (Phase A integration)")
+    p.add_argument("--jepa-lambda", type=float, default=0.1,
+                   help="Coefficient of the JEPA loss (default 0.1)")
     p.add_argument("--tfr-start", type=int, default=20,
                    help="Epoch at which scheduled sampling begins ramping TFR from 1.0→0.5 (copy only)")
     p.add_argument("--curriculum-passive-first", action="store_true",
