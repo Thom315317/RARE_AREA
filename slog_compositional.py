@@ -217,10 +217,12 @@ _orig_build_verb_perm_pool = cogs.build_verb_perm_pool
 
 
 def _patched_build_verb_perm_pool(train_pairs, in_w2i, out_w2i,
-                                   morphology_fallback=True):
+                                   morphology_fallback=True,
+                                   filter_unaccusative=False):
     global _UNACC_REMOVED_FROM_PERM
     pool, stats = _orig_build_verb_perm_pool(train_pairs, in_w2i, out_w2i,
-                                              morphology_fallback)
+                                              morphology_fallback,
+                                              filter_unaccusative=filter_unaccusative)
     if _UNACC_POOL_EXCLUDE:
         unacc_lemma_ids = {}
         for _pres, _past, lemma in UNACCUSATIVE_VERBS:
@@ -381,6 +383,9 @@ def _write_targeted_check(patch_run_dir):
     n_layers = ckpt.get("n_layers", 2)
     n_heads = ckpt.get("n_heads", 4)
     ffn = ckpt.get("ffn", 256)
+    use_jepa = bool(ckpt.get("use_jepa", False))
+    use_jepa_ema = bool(ckpt.get("use_jepa_ema", False))
+    jepa_ema_decay = float(ckpt.get("jepa_ema_decay", 0.99))
 
     if ckpt.get("use_tags"):
         in_to_out = cogs.build_in_to_out_map(in_w2i, out_w2i)
@@ -389,19 +394,25 @@ def _write_targeted_check(patch_run_dir):
             len(in_w2i), len(out_w2i), d_model=ckpt["d_model"],
             n_heads=n_heads, n_layers=n_layers, ffn=ffn,
             max_in=ckpt["max_in"], max_out=ckpt["max_out"],
-            in_to_out_map=in_to_out, token_categories=token_cats).to(device)
+            in_to_out_map=in_to_out, token_categories=token_cats,
+            use_jepa=use_jepa, use_jepa_ema=use_jepa_ema,
+            jepa_ema_decay=jepa_ema_decay).to(device)
     elif ckpt.get("use_copy"):
         in_to_out = cogs.build_in_to_out_map(in_w2i, out_w2i)
         model = cogs.TransformerSeq2SeqWithCopy(
             len(in_w2i), len(out_w2i), d_model=ckpt["d_model"],
             n_heads=n_heads, n_layers=n_layers, ffn=ffn,
             max_in=ckpt["max_in"], max_out=ckpt["max_out"],
-            in_to_out_map=in_to_out).to(device)
+            in_to_out_map=in_to_out, use_jepa=use_jepa,
+            use_jepa_ema=use_jepa_ema,
+            jepa_ema_decay=jepa_ema_decay).to(device)
     else:
         model = cogs.TransformerSeq2Seq(
             len(in_w2i), len(out_w2i), d_model=ckpt["d_model"],
             n_heads=n_heads, n_layers=n_layers, ffn=ffn,
-            max_in=ckpt["max_in"], max_out=ckpt["max_out"]).to(device)
+            max_in=ckpt["max_in"], max_out=ckpt["max_out"],
+            use_jepa=use_jepa, use_jepa_ema=use_jepa_ema,
+            jepa_ema_decay=jepa_ema_decay).to(device)
     model.load_state_dict(ckpt["state_dict"])
     model.eval()
 
@@ -472,8 +483,8 @@ if __name__ == "__main__":
                    help="Full patch: inject 300 unaccusative examples AND remove unaccusative verbs from permutation pool.")
     p.add_argument("--unaccusative-pool-only", action="store_true",
                    help="Control: remove unaccusative verbs from permutation pool WITHOUT injecting the 300 examples. Isolates the pool-change effect.")
-    p.add_argument("--filter-unaccusative-from-pool", action="store_true",
-                   help="Canonical name (sweep spec) — equivalent to --unaccusative-pool-only. Removes unaccusative verbs from the permutation pool without injection.")
+    # NOTE: --filter-unaccusative-from-pool is already defined in cogs.build_arg_parser()
+    # (canonical name from the COGS sweep spec). We just consume args.filter_unaccusative_from_pool below.
     p.add_argument("--unaccusative-count", type=int, default=300,
                    help="Number of unaccusative examples to inject (default 300).")
     args = p.parse_args()

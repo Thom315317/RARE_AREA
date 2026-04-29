@@ -661,6 +661,88 @@ Config : B4 + copy + peel10 + peel-cp10 + permute-verbs + wh-passive-aug + unacc
 
 ---
 
+## JEPA + meta-modèle (avril 2026)
+
+### Phase A — Intégration JEPA dans l'entraînement COGS
+
+Config : B4 + copy + peel-stack depth=5 + peel-cp depth=3 + permute-verbs + JEPA (λ=0.1) + tfr-start=20, seed 42, 60 epochs, 1.05M params.
+
+**Résultat : gen_greedy = 81.17%** (vs 81.56% sans JEPA = -0.39, dans le bruit d'un seed). 6/7 catégories structurelles maintenues à ≥99% (a2p 99.9, p2a 99.6, unacc_to_trans 99.6, obj_omit 99.6, only_seen_trans 99.5, prim_to_subj_proper 99.3). pp_recursion 8.8%, cp_recursion 5.3% (inchangés).
+
+**Sanity checks (validés)** :
+- jepa_loss : 2.0340 → 0.0676 (décroissance monotone)
+- task_loss : 4.0571 → 0.0202 (pas de dégradation par la régul JEPA)
+- surprise(gen) > surprise(train) (décorrélation OOD)
+
+**Conclusion** : la régularisation JEPA est gratuite côté performance et donne un signal de surprise utilisable downstream.
+
+### Phase B — Meta-dataset
+
+Pipeline `meta_dataset_builder.py` : pour chaque exemple dev+gen, calcule (surprise depuis JEPA, entropy en greedy decode sans gold, longueur, rare_token_count, nesting_depth = compteur de `that`). Schema strictement inférence-time-valid (correctif review hostile #1).
+
+24 000 exemples (3k dev + 21k gen), 3 829 erreurs (16.0%), split stratifié 70/15/15.
+
+**Sanity checks (validés)** :
+- `surprise(error) / surprise(exact) = 3.8×`
+- `entropy(error) / entropy(exact) = 13.7×` (l'entropie discrimine plus fortement)
+
+**Distribution des erreurs** : pp_recursion 79.9%, cp_recursion 92.8%, obj_pp_to_subj_pp 59.9%, prim/subj_to_obj_proper ~43%, only_seen_unacc_* 22-26%, 6 cibles ≤ 0.5%.
+
+**⚠️ Point clé** : matrice de corrélation Pearson révèle `surprise_mean ↔ input_length = 0.92`, `surprise_mean ↔ entropy_mean_greedy = 0.89`, `surprise_mean ↔ rare_token_count = -0.27` (seule feature vraiment orthogonale).
+
+### Phase C étape 1 — MetaMLP 2 features (surprise + input_length)
+
+Config : MetaMLP 3-layer (hidden=128, dropout 0.1), 2 features sur 3 seeds, comparé à 3 baselines (raw_surprise, logreg, GBDT 1D).
+
+| Seed | AUC MLP | Δ vs raw_surprise | Δ vs GBDT_1d | Decorrelation |
+|---|---|---|---|---|
+| 42  | 0.9399 | +0.039 [0.027, 0.051] | +0.036 [0.026, 0.047] | 0.248 |
+| 123 | 0.9380 | +0.038 [0.027, 0.048] | +0.034 [0.025, 0.045] | 0.256 |
+| 456 | 0.9409 | +0.040 [0.029, 0.053] | +0.037 [0.027, 0.049] | 0.262 |
+| **moy** | **0.9396** | **+0.039** | **+0.036** | **0.255** |
+
+**Verdict : MARGINAL — signal réel reproductible mais non orthogonal.**
+- Delta MLP vs raw_surprise = +3.9 ± 0.1 points AUC, IC95 excluent 0 sur les 3 seeds
+- Mais decorrelation_auc ≈ 0.255 (< 0.5) : le MLP n'aide pas sur les erreurs de la baseline 1D, il agrandit les marges sur les cas faciles
+- Cohérent avec corrélation `surprise ↔ input_length = 0.92` : features quasi-redondantes
+
+### Phase C étape 2 — Analyse par catégorie (4 features, 3 seeds)
+
+Config : MetaMLP avec `surprise_mean,entropy_mean_greedy,rare_token_count,nesting_depth` (4 features mixant collinéaires et orthogonales).
+
+**AUC global meta-test : 0.9714 ± 0.0004** sur 3 seeds (très stable). 11/18 catégories ≥ 0.85 et std ≤ 0.05.
+
+**Catégories impossibles — détection parfaite** :
+- `cp_recursion` (n=150, err 92.7%) : AUC **0.994**, flag rate **93.3%** ≈ cible
+- `pp_recursion` (n=150, err 80.0%) : AUC **0.993**, flag rate **81.3%** ≈ cible
+
+**Catégories quasi-parfaites — 0 faux positifs** :
+- a2p, p2a, unacc_to_trans, etc. : **0/1350 FP** sur 3 seeds combinés
+
+**Catégories problématiques (4 sur 22)** :
+- subj_to_obj_common (AUC 0.19), passive_to_active (0.31), unacc_to_transitive (0.32), obj_omit (0.46)
+- Mais TP=0 et FP=0 partout → bruit statistique sur 1-3 erreurs/150, pas un défaut pratique
+
+**Catégories à creuser pour étape 3** :
+- `only_seen_as_unacc_subj_*` : AUC 0.74-0.77, 22-26% d'erreurs réelles, mais le modèle ne flagge **rien** (TP=0). Erreurs faites avec confiance (faible surprise + faible entropie) → c'est exactement la zone où un encodeur léger sur input devrait aider.
+
+**Lecture** : meta-modèle scalaire suffit pour les cas "obviously hard" (récursion). Pour les cas "subtilement hard" (transpositions structurelles confiantes), il faut un encodeur regardant la structure de l'input. Étape 3 (encodeur léger) probablement justifiée.
+
+### Bilan meta-modèle
+
+| Étape | Features | AUC | Verdict |
+|---|---|---|---|
+| 1 | surprise + input_length | 0.94 | MARGINAL (decorr 0.25, collinéaires) |
+| 2 (4 feat) | + entropy + rare + nesting | **0.97** | Excellent globalement, mais signal scalaire plafonne sur les cas confiants |
+
+**Outils produits** :
+- `meta_dataset_builder.py` : pipeline Phase B (loading checkpoint JEPA + features inférence-valid)
+- `meta_train_etape1.py` : MLP avec --features configurable + 3 baselines + bootstrap CI
+- `meta_train_etape2.py` : version 2 features (surprise + entropy) + baselines entropie + double decorrelation
+- `meta_analyse_par_categorie.py` : breakdown par catégorie sur 3 seeds avec tagging spécifique récursion/quasi-parfait
+
+---
+
 ## Key findings
 
 1. **76% of "wrong_arg_position" errors are lexical hallucinations.** The model says "Ella" instead of "Paula" — it generates from vocab instead of copying from input. A copy mechanism (+128 params) resolves all 10 lexical categories at once (0% → 97-99%).

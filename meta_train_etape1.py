@@ -202,6 +202,9 @@ def main():
     ap.add_argument("--splits", required=True)
     ap.add_argument("--output", required=True)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--features", default="surprise_mean,input_length",
+                    help="Comma-separated feature names from features_inference. "
+                         "Must include 'surprise_mean' for baselines.")
     args = ap.parse_args()
 
     random.seed(args.seed); np.random.seed(args.seed)
@@ -220,8 +223,14 @@ def main():
     val_recs = [records[i] for i in splits["val"]]
     test_recs = [records[i] for i in splits["test"]]
 
-    # Features for the etape-1 cible: surprise_mean + input_length (≥2 features)
-    feat_names = ["surprise_mean", "input_length"]
+    # Features (CLI-configurable; default surprise_mean + input_length)
+    feat_names = [s.strip() for s in args.features.split(",") if s.strip()]
+    if "surprise_mean" not in feat_names:
+        raise SystemExit("--features must include 'surprise_mean' "
+                         "(needed for raw/logreg/gbdt baselines).")
+    if len(feat_names) < 2:
+        raise SystemExit("--features must list at least 2 names "
+                         "(spec correctif #4: ≥2 features for MetaMLP).")
     Xtr = _features_matrix(train_recs, feat_names)
     Xv = _features_matrix(val_recs, feat_names)
     Xte = _features_matrix(test_recs, feat_names)

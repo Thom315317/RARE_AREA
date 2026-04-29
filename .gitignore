@@ -53,3 +53,9 @@ venv/
 # Other
 plots/
 *.log
+
+# Meta-modèle outputs (regenerable, too big to track)
+meta_data/
+runs_meta/
+runs_transfer_cogs/
+tests/

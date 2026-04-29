@@ -50,6 +50,8 @@ def _load_model(ckpt_path, device):
     n_heads = ckpt.get("n_heads", 4)
     ffn = ckpt.get("ffn", 256)
     use_jepa = bool(ckpt.get("use_jepa", False))
+    use_jepa_ema = bool(ckpt.get("use_jepa_ema", False))
+    jepa_ema_decay = float(ckpt.get("jepa_ema_decay", 0.99))
     if not use_jepa:
         raise RuntimeError("Checkpoint was not trained with --jepa. "
                            "Re-run training with --jepa to produce a "
@@ -62,20 +64,24 @@ def _load_model(ckpt_path, device):
             n_heads=n_heads, n_layers=n_layers, ffn=ffn,
             max_in=ckpt["max_in"], max_out=ckpt["max_out"],
             in_to_out_map=in_to_out, token_categories=token_cats,
-            use_jepa=True).to(device)
+            use_jepa=True, use_jepa_ema=use_jepa_ema,
+            jepa_ema_decay=jepa_ema_decay).to(device)
     elif ckpt.get("use_copy"):
         in_to_out = build_in_to_out_map(in_w2i, out_w2i)
         model = TransformerSeq2SeqWithCopy(
             len(in_w2i), len(out_w2i), d_model=ckpt["d_model"],
             n_heads=n_heads, n_layers=n_layers, ffn=ffn,
             max_in=ckpt["max_in"], max_out=ckpt["max_out"],
-            in_to_out_map=in_to_out, use_jepa=True).to(device)
+            in_to_out_map=in_to_out, use_jepa=True,
+            use_jepa_ema=use_jepa_ema,
+            jepa_ema_decay=jepa_ema_decay).to(device)
     else:
         model = TransformerSeq2Seq(
             len(in_w2i), len(out_w2i), d_model=ckpt["d_model"],
             n_heads=n_heads, n_layers=n_layers, ffn=ffn,
             max_in=ckpt["max_in"], max_out=ckpt["max_out"],
-            use_jepa=True).to(device)
+            use_jepa=True, use_jepa_ema=use_jepa_ema,
+            jepa_ema_decay=jepa_ema_decay).to(device)
     model.load_state_dict(ckpt["state_dict"])
     model.eval()
     return model, ckpt

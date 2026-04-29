@@ -1702,6 +1702,9 @@ class JEPAPredictor(nn.Module):
     """Predicts encoder representation at position t+1 from position t.
     Lightweight MLP: d_model → d_model → d_model. Stop-gradient on the target
     so the predictor must learn the prediction without collapsing both sides.
+
+    When `target_enc_out` is provided (typically the EMA encoder output, already
+    no_grad), it is used as target instead of `enc_out[:, 1:].detach()`.
     """
     def __init__(self, d_model=128):
         super().__init__()
@@ -1711,10 +1714,13 @@ class JEPAPredictor(nn.Module):
             nn.Linear(d_model, d_model),
         )
 
-    def forward(self, enc_out):
+    def forward(self, enc_out, target_enc_out=None):
         # enc_out: (B, T, d_model). Predict t+1 from t.
         pred = self.net(enc_out[:, :-1])
-        target = enc_out[:, 1:].detach()  # stop-gradient
+        if target_enc_out is None:
+            target = enc_out[:, 1:].detach()  # stop-gradient
+        else:
+            target = target_enc_out[:, 1:]    # already no_grad (EMA encoder)
         return pred, target
 
 
@@ -1729,12 +1735,70 @@ def _jepa_loss(pred, target, src_mask):
     return (sq * mask).sum() / denom
 
 
+def _grad_snapshot(model, batch, device, use_copy):
+    """TEST 3 helper — calcule cos_sim entre gradient task et gradient JEPA
+    sur encoder.parameters() sur un batch fixe.
+    Retourne dict {cos_sim, norm_task, norm_jepa, loss_task, loss_jepa}.
+
+    `batch` est la sortie de `collate(...)` :
+        (src, src_mask, tgt, in_lens, cats)
+    """
+    model.train()
+    src = batch[0].to(device)
+    src_mask = batch[1].to(device).bool()
+    tgt = batch[2].to(device)
+    tgt_in = tgt[:, :-1]
+    tgt_out = tgt[:, 1:]
+
+    # Task forward
+    enc_out = model.encode(src, src_mask)
+    if use_copy:
+        log_probs = model.decode_with_copy(src, enc_out, ~src_mask, tgt_in)
+        V = log_probs.size(-1)
+        task_loss = F.nll_loss(log_probs.reshape(-1, V),
+                                tgt_out.reshape(-1), ignore_index=0)
+    else:
+        logits = model.decode(enc_out, ~src_mask, tgt_in)
+        V = logits.size(-1)
+        task_loss = F.cross_entropy(logits.reshape(-1, V),
+                                     tgt_out.reshape(-1), ignore_index=0)
+
+    # JEPA loss (re-use same enc_out — identique au training)
+    if getattr(model, "use_jepa_ema", False):
+        target_enc = model.encode_ema(src, src_mask)
+        pred_j, target_j = model.jepa_predictor(enc_out, target_enc)
+    else:
+        pred_j, target_j = model.jepa_predictor(enc_out)
+    jepa_loss = _jepa_loss(pred_j, target_j, src_mask)
+
+    enc_params = [p for p in model.encoder.parameters() if p.requires_grad]
+    if not enc_params:
+        return None
+    grads_task = torch.autograd.grad(task_loss, enc_params,
+                                      retain_graph=True, allow_unused=True)
+    grads_jepa = torch.autograd.grad(jepa_loss, enc_params,
+                                      retain_graph=False, allow_unused=True)
+    flat_t = torch.cat([g.flatten() for g in grads_task if g is not None])
+    flat_j = torch.cat([g.flatten() for g in grads_jepa if g is not None])
+    if flat_t.numel() == 0 or flat_j.numel() == 0:
+        return None
+    cs = F.cosine_similarity(flat_t.unsqueeze(0), flat_j.unsqueeze(0)).item()
+    return {
+        "cos_sim": float(cs),
+        "norm_task": float(flat_t.norm().item()),
+        "norm_jepa": float(flat_j.norm().item()),
+        "loss_task": float(task_loss.item()),
+        "loss_jepa": float(jepa_loss.item()),
+    }
+
+
 class TransformerSeq2Seq(nn.Module):
     """Encoder 2 layers + Decoder 2 layers, d=128, 4 heads. Pre-LN."""
 
     def __init__(self, in_vocab, out_vocab, d_model=128, n_heads=4,
                  n_layers=2, ffn=256, dropout=0.1,
-                 max_in=MAX_IN, max_out=MAX_OUT, use_jepa=False):
+                 max_in=MAX_IN, max_out=MAX_OUT, use_jepa=False,
+                 use_jepa_ema=False, jepa_ema_decay=0.99):
         super().__init__()
         self.d_model = d_model
         self.in_emb  = nn.Embedding(in_vocab,  d_model, padding_idx=0)
@@ -1754,8 +1818,15 @@ class TransformerSeq2Seq(nn.Module):
         self.max_in, self.max_out = max_in, max_out
         # Optional JEPA predictor (Phase A integration)
         self.use_jepa = use_jepa
+        self.use_jepa_ema = bool(use_jepa and use_jepa_ema)
+        self.jepa_ema_decay = float(jepa_ema_decay)
         if use_jepa:
             self.jepa_predictor = JEPAPredictor(d_model)
+        if self.use_jepa_ema:
+            import copy as _copy
+            self.encoder_ema = _copy.deepcopy(self.encoder)
+            for p in self.encoder_ema.parameters():
+                p.requires_grad = False
 
     def encode(self, src, src_mask):
         L = src.size(1)
@@ -1764,6 +1835,24 @@ class TransformerSeq2Seq(nn.Module):
         pos = torch.arange(L, device=src.device).unsqueeze(0)
         x = self.in_emb(src) + self.in_pe(pos)
         return self.encoder(x, src_key_padding_mask=~src_mask)
+
+    def encode_ema(self, src, src_mask):
+        """Forward through EMA encoder (no_grad). Only valid when use_jepa_ema."""
+        L = src.size(1)
+        pos = torch.arange(L, device=src.device).unsqueeze(0)
+        with torch.no_grad():
+            x = self.in_emb(src) + self.in_pe(pos)
+            return self.encoder_ema(x, src_key_padding_mask=~src_mask)
+
+    @torch.no_grad()
+    def update_ema(self):
+        """EMA update of encoder_ema params from live encoder. Call AFTER opt.step()."""
+        if not self.use_jepa_ema:
+            return
+        d = self.jepa_ema_decay
+        for p_ema, p in zip(self.encoder_ema.parameters(),
+                            self.encoder.parameters()):
+            p_ema.data.mul_(d).add_(p.data, alpha=1.0 - d)
 
     def decode(self, memory, mem_kpm, tgt):
         B, T = tgt.shape
@@ -1797,9 +1886,11 @@ class TransformerSeq2SeqWithCopy(TransformerSeq2Seq):
 
     def __init__(self, in_vocab, out_vocab, d_model=128, n_heads=4, n_layers=2,
                  ffn=256, dropout=0.1, max_in=MAX_IN, max_out=MAX_OUT,
-                 in_to_out_map=None, use_jepa=False):
+                 in_to_out_map=None, use_jepa=False,
+                 use_jepa_ema=False, jepa_ema_decay=0.99):
         super().__init__(in_vocab, out_vocab, d_model, n_heads, n_layers,
-                         ffn, dropout, max_in, max_out, use_jepa=use_jepa)
+                         ffn, dropout, max_in, max_out, use_jepa=use_jepa,
+                         use_jepa_ema=use_jepa_ema, jepa_ema_decay=jepa_ema_decay)
         self.copy_gate = nn.Linear(d_model, 1)
         if in_to_out_map is None:
             in_to_out_map = torch.full((in_vocab,), -1, dtype=torch.long)
@@ -1992,10 +2083,11 @@ class TransformerSeq2SeqCopyTags(TransformerSeq2SeqWithCopy):
     def __init__(self, in_vocab, out_vocab, d_model=128, n_heads=4, n_layers=2,
                  ffn=256, dropout=0.1, max_in=MAX_IN, max_out=MAX_OUT,
                  in_to_out_map=None, role_dim=16, token_categories=None,
-                 use_jepa=False):
+                 use_jepa=False, use_jepa_ema=False, jepa_ema_decay=0.99):
         super().__init__(in_vocab, out_vocab, d_model, n_heads, n_layers, ffn,
                          dropout, max_in, max_out, in_to_out_map=in_to_out_map,
-                         use_jepa=use_jepa)
+                         use_jepa=use_jepa, use_jepa_ema=use_jepa_ema,
+                         jepa_ema_decay=jepa_ema_decay)
         self.tagger = nn.Linear(d_model, N_ROLES)
         self.role_emb = nn.Embedding(N_ROLES, role_dim)
         self.k_proj = nn.Linear(d_model + role_dim, d_model)
@@ -2557,6 +2649,15 @@ def train_one_run(variant: str, seed: int, args):
     dev_pairs   = parse_cogs_tsv(os.path.join(DATA_DIR, "dev.tsv"))
     gen_pairs   = parse_cogs_tsv(os.path.join(DATA_DIR, "gen.tsv"))
 
+    # Phase A.2 : extra-train file (augmentation pilotée par meta-modèle)
+    extra_train_file = getattr(args, "extra_train_file", None)
+    if extra_train_file and os.path.exists(extra_train_file):
+        extra_pairs = parse_cogs_tsv(extra_train_file)
+        print(f"EXTRA TRAIN ON: +{len(extra_pairs)} examples from {extra_train_file}")
+        for pp in extra_pairs[:3]:
+            print(f"  ex: {pp[0][:80]} ...")
+        train_pairs = train_pairs + extra_pairs
+
     # B3/B3_auto/B4/B4_turbo/B5/B6: augment training set with structural examples
     if variant in ("B3", "B3_auto", "B4", "B4_turbo", "B5", "B5_lite", "B6", "B7a", "B7c"):
         # Manual PP examples (B3 only; B3_auto/B4/B5/B5_lite use auto-generated)
@@ -3044,6 +3145,8 @@ def train_one_run(variant: str, seed: int, args):
     use_copy = getattr(args, "copy", False)
     use_tags = getattr(args, "tags", False)
     use_jepa = bool(getattr(args, "jepa", False))
+    use_jepa_ema = bool(getattr(args, "jepa_ema", False))
+    jepa_ema_decay = float(getattr(args, "jepa_ema_decay", 0.99))
     if use_tags:
         in_to_out = build_in_to_out_map(in_w2i, out_w2i)
         n_shared = (in_to_out >= 0).sum().item()
@@ -3057,7 +3160,9 @@ def train_one_run(variant: str, seed: int, args):
                                            max_in=mx_in, max_out=mx_out,
                                            in_to_out_map=in_to_out,
                                            token_categories=token_cats,
-                                           use_jepa=use_jepa).to(device)
+                                           use_jepa=use_jepa,
+                                           use_jepa_ema=use_jepa_ema,
+                                           jepa_ema_decay=jepa_ema_decay).to(device)
         use_copy = True     # tags implies copy
     elif use_copy:
         in_to_out = build_in_to_out_map(in_w2i, out_w2i)
@@ -3070,7 +3175,9 @@ def train_one_run(variant: str, seed: int, args):
                                            ffn=args.ffn,
                                            max_in=mx_in, max_out=mx_out,
                                            in_to_out_map=in_to_out,
-                                           use_jepa=use_jepa).to(device)
+                                           use_jepa=use_jepa,
+                                           use_jepa_ema=use_jepa_ema,
+                                           jepa_ema_decay=jepa_ema_decay).to(device)
     else:
         model = TransformerSeq2Seq(len(in_w2i), len(out_w2i),
                                    d_model=args.d_model,
@@ -3078,10 +3185,13 @@ def train_one_run(variant: str, seed: int, args):
                                    n_layers=args.n_layers,
                                    ffn=args.ffn,
                                    max_in=mx_in, max_out=mx_out,
-                                   use_jepa=use_jepa).to(device)
+                                   use_jepa=use_jepa,
+                                   use_jepa_ema=use_jepa_ema,
+                                   jepa_ema_decay=jepa_ema_decay).to(device)
     if use_jepa:
         jl = float(getattr(args, "jepa_lambda", 0.1))
-        print(f"JEPA predictor ON: lambda={jl} (loss = task + lambda * jepa)")
+        ema_str = f" + EMA target (decay={jepa_ema_decay})" if use_jepa_ema else ""
+        print(f"JEPA predictor ON: lambda={jl}{ema_str} (loss = task + lambda * jepa)")
     # Bidirectional: tie input/output embeddings (single embedding for unified vocab)
     if bidirectional:
         model.out_emb.weight = model.in_emb.weight
@@ -3128,6 +3238,17 @@ def train_one_run(variant: str, seed: int, args):
     jepa_trajectory = []
     jepa_train_sample_idx = None
     jepa_gen_sample_idx_by_cat = None
+    # TEST 3 — gradient conflict snapshots (per-epoch on fixed val batch)
+    grad_snapshots = []
+    grad_snapshots_out = getattr(args, "grad_snapshots_out", None)
+    grad_fixed_batch = None
+    if grad_snapshots_out and use_jepa:
+        # Take a fixed batch from val set for reproducible grad measurements
+        try:
+            grad_fixed_batch = next(iter(dv_ld))
+            print(f"GRAD SNAPSHOTS ON: writing to {grad_snapshots_out} after each epoch")
+        except StopIteration:
+            grad_fixed_batch = None
     if use_jepa:
         rng_sample = random.Random(seed + 1)
         jepa_train_sample_idx = rng_sample.sample(
@@ -3279,13 +3400,17 @@ def train_one_run(variant: str, seed: int, args):
 
                 # JEPA auxiliary loss (Phase A integration). Predictor sits on
                 # encoder output; loss is masked MSE between net(enc[:-1]) and
-                # detached enc[1:]. Adds args.jepa_lambda × jepa_loss to the
-                # main loss. Track jepa_loss for logging even if lambda=0.
+                # detached enc[1:] (or EMA encoder output if use_jepa_ema).
+                # Adds args.jepa_lambda × jepa_loss to the main loss.
                 jepa_loss_value = 0.0
                 if getattr(model, "use_jepa", False):
                     enc_out = info.get("enc_out")
                     if enc_out is not None:
-                        pred_j, target_j = model.jepa_predictor(enc_out)
+                        if getattr(model, "use_jepa_ema", False):
+                            target_enc = model.encode_ema(src, src_mask)
+                            pred_j, target_j = model.jepa_predictor(enc_out, target_enc)
+                        else:
+                            pred_j, target_j = model.jepa_predictor(enc_out)
                         jepa_loss = _jepa_loss(pred_j, target_j, src_mask)
                         loss = loss + float(getattr(args, "jepa_lambda", 0.1)) * jepa_loss
                         jepa_loss_value = float(jepa_loss.detach().item())
@@ -3295,6 +3420,9 @@ def train_one_run(variant: str, seed: int, args):
             scaler.step(opt)
             scaler.update()
             sched.step()
+            # EMA update of encoder_ema after the optimizer step
+            if getattr(model, "use_jepa_ema", False):
+                model.update_ema()
             tr_loss += loss.item(); n_batches += 1
             tr_jepa_loss += jepa_loss_value
 
@@ -3315,6 +3443,16 @@ def train_one_run(variant: str, seed: int, args):
         if use_jepa:
             entry["jepa_loss_train_avg"] = tr_jepa_loss / max(n_batches, 1)
         metrics_log.append(entry)
+
+        # TEST 3 — gradient conflict snapshot (per-epoch on fixed val batch)
+        if grad_snapshots_out and use_jepa and grad_fixed_batch is not None:
+            try:
+                snap = _grad_snapshot(model, grad_fixed_batch, device, use_copy)
+                if snap is not None:
+                    snap["epoch"] = ep
+                    grad_snapshots.append(snap)
+            except Exception as e:
+                print(f"  grad_snapshot ep{ep} skipped: {e}")
 
         # Phase A.5 — sample JEPA surprise on fixed train + stratified gen subsets
         # at ep 0, 5, 10, … and at the last epoch.
@@ -3377,7 +3515,8 @@ def train_one_run(variant: str, seed: int, args):
         print(f"E{ep:03d} {mark} loss={tr_loss/max(n_batches,1):.4f}{jepa_str} "
               f"dev_ex={dev_m['exact']:5.2f}% gen_ex={gen_m['exact']:5.2f}% "
               f"tok_g={gen_m['tok_acc']:5.2f}% lr={sched.get_last_lr()[0]:.2e}{tfr_str} "
-              f"pat={patience} | {dt:.1f}s ETA {eta_m}m{eta_sec:02d}s")
+              f"pat={patience} | {dt:.1f}s ETA {eta_m}m{eta_sec:02d}s",
+              flush=True)
 
         if patience >= args.patience:
             print(f"Early stopping at epoch {ep} (patience {args.patience}).")
@@ -3477,7 +3616,9 @@ def train_one_run(variant: str, seed: int, args):
                  "ffn": args.ffn,
                  "max_in": model.max_in, "max_out": model.max_out,
                  "use_copy": use_copy, "use_tags": use_tags,
-                 "use_jepa": use_jepa}
+                 "use_jepa": use_jepa,
+                 "use_jepa_ema": bool(getattr(model, "use_jepa_ema", False)),
+                 "jepa_ema_decay": float(getattr(model, "jepa_ema_decay", 0.99))}
     if use_jepa:
         ckpt_dict["jepa_state_dict"] = model.jepa_predictor.state_dict()
         ckpt_dict["jepa_lambda"] = float(getattr(args, "jepa_lambda", 0.1))
@@ -3509,6 +3650,14 @@ def train_one_run(variant: str, seed: int, args):
             print(f"  wrote {os.path.join(run_dir, 'jepa_curves.png')}")
         except Exception as e:
             print(f"  jepa_curves.png skipped: {e}")
+
+    # TEST 3 — dump grad_snapshots
+    if grad_snapshots_out and grad_snapshots:
+        os.makedirs(os.path.dirname(grad_snapshots_out) or ".", exist_ok=True)
+        with open(grad_snapshots_out, "w") as f:
+            json.dump(grad_snapshots, f, indent=2)
+        print(f"  wrote {grad_snapshots_out} ({len(grad_snapshots)} epochs)")
+
     print(f"\nFinished {bench_name} {variant}/s{seed}: "
           f"best_gen_tf={summary['best_gen_exact_tf']:.2f}%  "
           f"final_gen_greedy={summary['final_gen_exact_greedy']:.2f}%")
@@ -3617,6 +3766,18 @@ def build_arg_parser(description="COGS compositional generalization"):
                    help="Activate JEPA predictor during training (Phase A integration)")
     p.add_argument("--jepa-lambda", type=float, default=0.1,
                    help="Coefficient of the JEPA loss (default 0.1)")
+    p.add_argument("--jepa-ema", action="store_true",
+                   help="Use EMA encoder copy as JEPA target (more stable). "
+                        "Decay set by --jepa-ema-decay.")
+    p.add_argument("--jepa-ema-decay", type=float, default=0.99,
+                   help="EMA decay rate for the JEPA target encoder (default 0.99)")
+    p.add_argument("--extra-train-file", default=None,
+                   help="Path to a TSV with extra train pairs (Phase A.2). "
+                        "Same format as train.tsv (input\\tlf\\tcategory). "
+                        "Concatenated to train_pairs after the base load.")
+    p.add_argument("--grad-snapshots-out", default=None,
+                   help="Path to JSON output for per-epoch gradient cos_sim "
+                        "snapshots (TEST 3 diagnostic). Requires --jepa.")
     p.add_argument("--tfr-start", type=int, default=20,
                    help="Epoch at which scheduled sampling begins ramping TFR from 1.0→0.5 (copy only)")
     p.add_argument("--curriculum-passive-first", action="store_true",

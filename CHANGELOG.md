@@ -4,6 +4,63 @@ Chronological log of every modification, with rationale and result.
 
 ---
 
+## v12 — JEPA + meta-modèle (Phase A/B/C) — 2026-04-26
+
+### Phase A : intégration JEPA dans `cogs_compositional.py`
+- Nouvelle classe `JEPAPredictor` (MLP d→d→d avec stop-gradient sur la cible)
+- Helper `_jepa_loss(pred, target, src_mask)` — MSE masqué sur encoder shifted-by-1
+- Argument `use_jepa=False` propagé dans les 3 classes (`TransformerSeq2Seq`, `…WithCopy`, `…CopyTags`)
+- CLI : `--jepa`, `--jepa-lambda` (défaut 0.1), `--filter-unaccusative-from-pool`
+- Boucle d'entraînement : `total_loss = task + λ × jepa`, log per-epoch `jepa=X.XXXX`
+- Trajectoire échantillonnée tous les 5 epochs sur 200 train + 200 gen stratifié → `jepa_trajectory.json`
+- `jepa_curves.png` à la fin du run
+- Checkpoint étendu : `use_jepa`, `jepa_state_dict`, `jepa_lambda` (backward-compat)
+
+**Run B4+JEPA seed 42** : gen_greedy 81.17% (vs 81.56% sans JEPA), jepa_loss 2.03→0.07, sanity checks OK.
+
+### Phase B : `meta_dataset_builder.py` (nouveau)
+- Charge un checkpoint JEPA (`use_jepa=True` requis)
+- Pour chaque exemple dev+gen : surprise (depuis JEPA), greedy decode + entropy (sans gold), structural features
+- Schema strict inférence-time-valid (correctif review hostile #1) : surprise_mean/max, entropy_mean/max_greedy, input_length, rare_token_count, nesting_depth
+- Sortie : JSONL + splits stratifiés 70/15/15 + stats.md (sanity checks) + feature_distributions.png + token_freq.json
+- 24 000 records produits sur le run B4 ; ratio surprise(error)/surprise(exact) = 3.8×, entropy = 13.7×
+
+### Phase C : `meta_train_etape1.py` (nouveau)
+- MetaMLP 3-layer (hidden=128, dropout 0.1)
+- Features par défaut : surprise_mean + input_length (≥2 imposé par correctif #4)
+- Flag `--features` ajouté pour configurer la liste
+- 3 baselines : raw_surprise (correctif #3), Logreg(1D), GBDT(1D, n_estimators=100, depth=3)
+- Bootstrap CI (1000 resamples) sur deltas
+- Test de décorrélation : AUC du MLP sur les exemples mal classés par GBDT_1D
+- Verdict auto per spec C.8 : GO/MARGINAL/NO-GO/BUG
+
+**Résultats étape 1 (3 seeds)** : AUC MLP = 0.940 (±0.001), Δ vs raw = +0.039 IC>0, **decorrelation = 0.255 < 0.55 → verdict MARGINAL**. Cohérent avec corr(surprise, input_length) = 0.92.
+
+### Phase C étape 2 : `meta_train_etape2.py` (nouveau)
+- Features hardcodées : surprise_mean + entropy_mean_greedy
+- Ajoute 2 baselines 1D pour l'entropie (raw_entropy + GBDT_1D-entropy)
+- Corrélation feature loggée (`feature_correlation.txt`) avec alerte si |corr| > 0.85
+- Double test de décorrélation : MLP sur erreurs GBDT-surprise ET sur erreurs GBDT-entropy
+- 6 modèles sur ROC superposée
+- Verdict auto §5 : GO étape 3 / PARTIEL / NO-GO / BUG
+
+### Phase C analyse par catégorie : `meta_analyse_par_categorie.py` (nouveau)
+- Re-entraîne MetaMLP sur 3 seeds (déterministe) avec --features configurable
+- Per catégorie : AUC (si ≥20 ex, 2 classes), TP/FN/TN/FP au seuil val-optimal
+- Tagging spécifique : cp/pp_recursion (impossibles, doivent être flag>70%) ; a2p/p2a/unacc_to_trans (faciles, FP doivent rester ≤5%)
+- Agrégation 3 seeds : mean ± std AUC, somme TP/FN/TN/FP
+- Sortie : single MD avec synthèse 5-10 lignes
+
+**Résultat 4 features** (surprise+entropy+rare+nesting) **3 seeds** :
+- AUC global = 0.9714 ± 0.0004
+- cp_recursion AUC 0.994, flag 93.3% (cible 92.7%) — détection parfaite
+- pp_recursion AUC 0.993, flag 81.3% (cible 80%) — idem
+- 0 FP sur 1350 catégories quasi-parfaites
+- 4 catégories AUC < 0.5 : bruit statistique (1-3 vraies erreurs, FP=0)
+- only_seen_as_unacc_subj_* : AUC 0.74-0.77, TP=0 (erreurs faites avec confiance) → cible étape 3
+
+---
+
 ## v11 — COGS compositional benchmark — 2026-04-17
 
 ### New file `cogs_compositional.py` (standalone)
