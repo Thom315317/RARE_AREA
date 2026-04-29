@@ -4,6 +4,55 @@ Chronological log of every modification, with rationale and result.
 
 ---
 
+## v13 — Cleanup post-Tests v2 — 2026-04-29
+
+### Composants archivés (branche `archive/jepa_a2_v1`)
+
+État pré-nettoyage figé sur la branche `archive/jepa_a2_v1` (commit
+`0dcd03e`). Sur main, les composants suivants ne sont plus utilisés par le
+pipeline principal — leur code reste présent (non instancié) :
+
+- **JEPA loss** (`--jepa`, `--jepa-lambda`, `--jepa-ema`) :
+  - Verdict TEST 2 (ablation factorielle) : Δ macro intra-cat = +0.001 (COGS),
+    -0.001 (SLOG) avec IC95 incluant 0 → **NO-GO causalement utile**.
+  - Verdict TEST 3 (gradient conflict) : reporté (snapshot bug), réutiliser
+    les checkpoints existants pour diagnostic post-hoc si besoin.
+  - Code `JEPAPredictor`, `_jepa_loss`, `encode_ema`, `update_ema` reste dans
+    `cogs_compositional.py` mais n'est plus activé dans les commandes du
+    pipeline propre (`pipeline_clean/`).
+
+- **Feature `nesting_depth`** dans le MetaEncoder :
+  - Verdict TEST 2 : C2 (tokens+structure) ne bat pas C1 (tokens-only) sur
+    macro intra-cat. Feature dégrade légèrement sur SLOG.
+  - Le pipeline propre utilise désormais C5 (tokens + entropy + surprise).
+
+- **A.2 auto-correction** (`meta_a2_*.py`, `run_a2_cycle1.sh`) :
+  - Verdict TEST 1 : Δ_pria moyen = -19.85pp sur 3 seeds (catastrophic
+    forgetting structurel confirmé). Le `peel_cp_prefix` casse
+    `prim_to_inf_arg`.
+  - Modules conservés mais non importés par le pipeline principal.
+
+Ces composants peuvent être réactivés si le diagnostic de fuite (à venir)
+invalide les conclusions actuelles.
+
+### Bug fixé
+
+- `_grad_snapshot` (TEST 3) : ordre du tuple `collate()` incorrect
+  → `batch[3]` n'est PAS `src_mask` mais `in_lens` (1-D). Fixé : utiliser
+  `batch[1]` pour src_mask et dériver `tgt_in/tgt_out` de `batch[2]`.
+
+### Anomalie résolue
+
+- **risk@cov=0.80 SLOG** : 0.103 (A.1) vs 0.4150 (TEST 2) — **pas un bug**
+  d'implémentation. Sur SLOG (err_rate=0.532), la borne théorique à
+  coverage=0.80 est `(0.532-0.20)/0.80 = 0.4150`. Le 0.103 d'A.1 vient d'un
+  bug `np.interp` (extrapolation hors plage) car les scores SLOG sont
+  bimodaux (coverage observée ∈ [0.43, 0.50]).
+- À cov=0.50 sur SLOG : risk = 0.072 (utilisable). À cov=0.30 : 0.001.
+  Le coverage 80% est inadapté à un benchmark à 53% d'erreurs.
+
+---
+
 ## v12 — JEPA + meta-modèle (Phase A/B/C) — 2026-04-26
 
 ### Phase A : intégration JEPA dans `cogs_compositional.py`
